@@ -107,9 +107,9 @@ func (ce *CovenantEmulator) UpdateParams() error {
 	return nil
 }
 
-// AddCovenantSignature adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
+// AddCovenantSignatures adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
 // TODO: break this function into smaller components
-func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*types.TxResponse, error) {
+func (ce *CovenantEmulator) AddCovenantSignatures(btcDel *types.Delegation) (*types.TxResponse, error) {
 	// 0. nil checks
 	if btcDel == nil {
 		return nil, fmt.Errorf("empty delegation")
@@ -338,7 +338,7 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			}
 
 			for _, d := range dels {
-				_, err := ce.AddCovenantSignature(d)
+				_, err := ce.AddCovenantSignatures(d)
 				if err != nil {
 					delPkHex := bbntypes.NewBIP340PubKeyFromBTCPK(d.BtcPk).MarshalHex()
 					ce.logger.Error(

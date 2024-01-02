@@ -85,7 +85,7 @@ type TestDelegationData struct {
 }
 
 func StartManager(t *testing.T) *TestManager {
-	testDir, err := tempDirWithName("fpe2etest")
+	testDir, err := baseDir("cee2etest")
 	require.NoError(t, err)
 
 	logger := zap.NewNop()
@@ -121,7 +121,8 @@ func StartManager(t *testing.T) *TestManager {
 	require.NoError(t, err)
 
 	// 5. prepare covenant emulator
-	covbc, err := covcc.NewBabylonController(covenantConfig.BabylonConfig, &covenantConfig.BTCNetParams, logger)
+	bbnCfg := defaultBBNConfigWithKey(cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory)
+	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, passphrase, logger)
 	require.NoError(t, err)
 	err = ce.Start()
@@ -524,6 +525,15 @@ func defaultFpConfig(keyringDir, homeDir string) *fpcfg.Config {
 	return &cfg
 }
 
+func defaultBBNConfigWithKey(key, keydir string) *covcfg.BBNConfig {
+	bbnCfg := covcfg.DefaultBBNConfig()
+	bbnCfg.Key = key
+	bbnCfg.KeyDirectory = keydir
+	bbnCfg.GasAdjustment = 20
+
+	return &bbnCfg
+}
+
 func defaultCovenantConfig(homeDir string) *covcfg.Config {
 	cfg := covcfg.DefaultConfigWithHomePath(homeDir)
 	cfg.BabylonConfig.KeyDirectory = homeDir
@@ -535,23 +545,6 @@ func defaultEOTSConfig() *eotsconfig.Config {
 	cfg := eotsconfig.DefaultConfig()
 
 	return &cfg
-}
-
-func tempDirWithName(name string) (string, error) {
-	tempPath := os.TempDir()
-
-	tempName, err := os.MkdirTemp(tempPath, name)
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Chmod(tempName, 0755)
-
-	if err != nil {
-		return "", err
-	}
-
-	return tempName, nil
 }
 
 func newDescription(moniker string) *stakingtypes.Description {

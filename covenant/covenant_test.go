@@ -178,7 +178,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			unbondingCovSlashingSigs,
 		).
 			Return(&types.TxResponse{TxHash: expectedTxHash}, nil).AnyTimes()
-		res, err := ce.AddCovenantSignature(btcDel)
+		res, err := ce.AddCovenantSignatures(btcDel)
 		require.NoError(t, err)
 		require.Equal(t, expectedTxHash, res.TxHash)
 	})
