@@ -26,4 +26,17 @@ type StakingParams struct {
 
 	// The staked amount to be slashed, expressed as a decimal (e.g., 0.5 for 50%).
 	SlashingRate sdkmath.LegacyDec
+
+	// The minimum time for unbonding transaction timelock in BTC blocks
+	MinUnbondingTime uint32
+}
+
+// MinimumUnbondingTime returns the minimum unbonding time. It is the bigger value from:
+// - MinUnbondingTime
+// - CheckpointFinalizationTimeout
+func (p *StakingParams) MinimumUnbondingTime() uint64 {
+	return sdkmath.Max[uint64](
+		uint64(p.MinUnbondingTime),
+		p.FinalizationTimeoutBlocks,
+	)
 }

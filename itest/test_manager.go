@@ -137,6 +137,7 @@ func StartManager(t *testing.T) *TestManager {
 		CovenanConfig:     covenantConfig,
 		EOTSClient:        eotsCli,
 		FPBBNClient:       fpbc,
+		CovBBNClient:      covbc,
 		baseDir:           testDir,
 	}
 

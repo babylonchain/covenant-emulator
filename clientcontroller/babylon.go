@@ -126,6 +126,7 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		SlashingAddress:           slashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
 	}, nil
 }
 

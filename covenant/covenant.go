@@ -124,7 +124,18 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		return nil, nil
 	}
 
-	// 2. check staking tx and slashing tx are valid
+	// 2. check unbonding time (staking time from unbonding tx) is larger than min unbonding time
+	// which is larger value from:
+	// - MinUnbondingTime
+	// - CheckpointFinalizationTimeout
+	unbondingTime := btcDel.BtcUndelegation.UnbondingTime
+	minUnbondingTime := ce.params.MinUnbondingTime
+	if unbondingTime <= minUnbondingTime {
+		return nil, fmt.Errorf("unbonding time %d must be larger than %d",
+			unbondingTime, minUnbondingTime)
+	}
+
+	// 3. check staking tx and slashing tx are valid
 	stakingMsgTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.StakingTxHex)
 	if err != nil {
 		return nil, err
@@ -152,7 +163,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		return nil, fmt.Errorf("invalid txs in the delegation: %w", err)
 	}
 
-	// 3. Check unbonding transaction
+	// 4. Check unbonding transaction
 	unbondingSlashingMsgTx, _, err := bbntypes.NewBTCTxFromHex(btcDel.BtcUndelegation.SlashingTxHex)
 	if err != nil {
 		return nil, err
@@ -189,7 +200,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		return nil, fmt.Errorf("invalid txs in the undelegation: %w", err)
 	}
 
-	// 4. sign covenant staking sigs
+	// 5. sign covenant staking sigs
 	covenantPrivKey, err := ce.getPrivKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
@@ -232,7 +243,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		covSigs = append(covSigs, covenantSig.MustMarshal())
 	}
 
-	// 5. sign covenant unbonding sig
+	// 6. sign covenant unbonding sig
 	stakingTxUnbondingPathInfo, err := stakingInfo.UnbondingPathSpendInfo()
 	if err != nil {
 		return nil, err
@@ -248,7 +259,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		return nil, fmt.Errorf("failed to sign unbonding tx: %w", err)
 	}
 
-	// 6. sign covenant unbonding slashing sig
+	// 7. sign covenant unbonding slashing sig
 	slashUnbondingTx, err := bstypes.NewBTCSlashingTxFromHex(btcDel.BtcUndelegation.SlashingTxHex)
 	if err != nil {
 		return nil, err
@@ -278,7 +289,7 @@ func (ce *CovenantEmulator) AddCovenantSignature(btcDel *types.Delegation) (*typ
 		covSlashingSigs = append(covSlashingSigs, covenantSig.MustMarshal())
 	}
 
-	// 7. submit covenant sigs
+	// 8. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(ce.pk, stakingMsgTx.TxHash().String(), covSigs, covenantUnbondingSignature, covSlashingSigs)
 
 	if err != nil {
