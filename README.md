@@ -1,1 +1,1 @@
-# covenant-emulator
+# Covenant Emulator
