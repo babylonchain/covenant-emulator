@@ -14,11 +14,11 @@ var (
 	stakingAmount = int64(20000)
 )
 
-// TestFinalityProviderLifeCycle tests the whole life cycle of a finality-provider
+// TestCovenantEmulatorLifeCycleWithFinalityProvider tests the whole life cycle of a finality-provider
 // creation -> registration -> randomness commitment ->
 // activation with BTC delegation and Covenant sig ->
 // vote submission -> block finalization
-func TestFinalityProviderLifeCycle(t *testing.T) {
+func TestCovenantEmulatorLifeCycleWithFinalityProvider(t *testing.T) {
 	tm, fpInsList := StartManagerWithFinalityProvider(t, 1)
 	defer tm.Stop(t)
 
