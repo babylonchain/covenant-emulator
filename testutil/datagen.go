@@ -15,14 +15,8 @@ import (
 	"github.com/babylonchain/covenant-emulator/types"
 )
 
-func GenRandomByteArray(r *rand.Rand, length uint64) []byte {
-	newHeaderBytes := make([]byte, length)
-	r.Read(newHeaderBytes)
-	return newHeaderBytes
-}
-
 func GenRandomHexStr(r *rand.Rand, length uint64) string {
-	randBytes := GenRandomByteArray(r, length)
+	randBytes := datagen.GenRandomByteArray(r, length)
 	return hex.EncodeToString(randBytes)
 }
 

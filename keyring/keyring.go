@@ -47,7 +47,6 @@ func CreateClientCtx(keyringDir string, chainId string) (client.Context, error) 
 		}
 		keyringDir = path.Join(homeDir, ".covenant-emulator")
 	}
-
 	return client.Context{}.
 		WithChainID(chainId).
 		WithCodec(codec.MakeCodec()).

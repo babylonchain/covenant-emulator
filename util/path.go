@@ -20,7 +20,7 @@ func FileExists(name string) bool {
 }
 
 func MakeDirectory(dir string) error {
-	err := os.MkdirAll(dir, 0700)
+	err := os.MkdirAll(dir, 0600)
 	if err != nil {
 		// Show a nicer error message if it's because a symlink
 		// is linked to a directory that does not exist

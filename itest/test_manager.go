@@ -123,6 +123,7 @@ func StartManager(t *testing.T) *TestManager {
 	// 5. prepare covenant emulator
 	bbnCfg := defaultBBNConfigWithKey(cfg.BabylonConfig.Key, cfg.BabylonConfig.KeyDirectory)
 	covbc, err := covcc.NewBabylonController(bbnCfg, &covenantConfig.BTCNetParams, logger)
+	require.NoError(t, err)
 	ce, err := covenant.NewCovenantEmulator(covenantConfig, covbc, passphrase, logger)
 	require.NoError(t, err)
 	err = ce.Start()
