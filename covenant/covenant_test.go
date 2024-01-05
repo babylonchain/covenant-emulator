@@ -85,6 +85,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 			StartHeight:      startHeight, // not relevant here
 			EndHeight:        startHeight + uint64(stakingTimeBlocks),
 			TotalSat:         uint64(stakingValue),
+			UnbondingTime:    uint32(unbondingTime),
 			StakingTxHex:     hex.EncodeToString(stakingTxBytes),
 			StakingOutputIdx: 0,
 			SlashingTxHex:    testInfo.SlashingTx.ToHexStr(),

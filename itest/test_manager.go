@@ -151,7 +151,7 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.FPBBNClient.QueryStakingParams()
+		_, err := tm.CovBBNClient.QueryStakingParams()
 
 		return err == nil
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
@@ -244,7 +244,11 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 
 func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		return fpIns.GetLastCommittedHeight() > 0
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
+		if err != nil {
+			return false
+		}
+		return lastCommittedHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
@@ -274,7 +278,7 @@ func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340
 	var dels []*types.Delegation
 	currentBtcTip, err := tm.FPBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	params, err := tm.FPBBNClient.QueryStakingParams()
+	params, err := tm.CovBBNClient.QueryStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		dels, err = tm.CovBBNClient.QueryFinalityProviderDelegations(btcPk, 1000)
@@ -371,6 +375,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	changeAddress, err := datagen.GenRandomBTCAddress(r, btcNetworkParams)
 	require.NoError(t, err)
 
+	slashingLockTime := uint16(101)
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
@@ -381,8 +386,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		params.CovenantQuorum,
 		stakingTime,
 		stakingAmount,
-		params.SlashingAddress.String(), changeAddress.String(),
+		params.SlashingAddress.String(),
 		params.SlashingRate,
+		slashingLockTime,
 	)
 
 	// delegator Babylon key pairs
@@ -447,8 +453,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 		unbondingValue,
 		params.SlashingAddress.String(),
-		changeAddress.String(),
 		params.SlashingRate,
+		slashingLockTime,
 	)
 
 	unbondingTxMsg := testUnbondingInfo.UnbondingTx
