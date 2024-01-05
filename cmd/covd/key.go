@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/babylonchain/babylon/types"
+	"github.com/jessevdk/go-flags"
 	"github.com/urfave/cli"
 
 	covcfg "github.com/babylonchain/covenant-emulator/config"
@@ -62,6 +63,13 @@ func createKey(ctx *cli.Context) error {
 	backend := ctx.String(keyringBackendFlag)
 	passphrase := ctx.String(passphraseFlag)
 	hdPath := ctx.String(hdPathFlag)
+	keyBackend := ctx.String(keyringBackendFlag)
+
+	// check the config file exists
+	cfg, err := covcfg.LoadConfig(homePath)
+	if err != nil {
+		return fmt.Errorf("failed to load the config from %s: %w", covcfg.ConfigFile(homePath), err)
+	}
 
 	keyPair, err := covenant.CreateCovenantKey(
 		homePath,
@@ -71,7 +79,6 @@ func createKey(ctx *cli.Context) error {
 		passphrase,
 		hdPath,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to create covenant key: %w", err)
 	}
@@ -84,7 +91,12 @@ func createKey(ctx *cli.Context) error {
 		},
 	)
 
-	return err
+	// write the updated config into the config file
+	cfg.BabylonConfig.Key = keyName
+	cfg.BabylonConfig.KeyringBackend = keyBackend
+	fileParser := flags.NewParser(cfg, flags.Default)
+
+	return flags.NewIniParser(fileParser).WriteFile(covcfg.ConfigFile(homePath), flags.IniIncludeComments|flags.IniIncludeDefaults)
 }
 
 func printRespJSON(resp interface{}) {

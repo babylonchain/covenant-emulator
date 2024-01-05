@@ -162,3 +162,31 @@ KeyDirectory = /path/to/covd/home
 To see the complete list of configuration options, check the `covd.conf` file.
 
 ## Generate key pairs
+
+The covenant emulator daemon requires the existence of a keyring that signs signatures and interact with Babylon.
+Use the following command to generate the key:
+
+```bash
+$ covd create-key --key-name covenant-key --chain-id chain-test
+{
+    "name": "cov-key",
+    "public-key": "9bd5baaba3d3fb5a8bcb8c2995c51793e14a1e32f1665cade168f638e3b15538"
+}
+```
+
+After executing the above command, the key name will be saved in the config file
+created in [step](#configuration).
+Note that the `public-key` in the output should be used as one of the inputs of the genesis of the Babylon chain.
+
+## Start the daemon
+
+You can start the covenant emulator daemon using the following command:
+
+```bash
+$ covd start
+2024-01-05T05:59:09.429615Z	info	Starting Covenant Emulator
+2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
+```
+
+All the available CLI options can be viewed using the `--help` flag. These options
+can also be set in the configuration file.

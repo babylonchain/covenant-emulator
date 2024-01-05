@@ -1,4 +1,4 @@
-module github.com/babylonchain/finality-provider/tools
+module github.com/babylonchain/covenant-emulator/tools
 
 go 1.21
 
