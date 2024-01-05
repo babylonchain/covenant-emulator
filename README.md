@@ -88,3 +88,77 @@ installed by running
 ```bash
 sudo apt install build-essential
 ```
+
+## Setting up a covenant emulator
+
+### Configuration
+
+The `covd init` command initializes a home directory for the
+finality provider daemon.
+This directory is created in the default home location or in a
+location specified by the `--home` flag.
+If the home direction already exists, add `--force` to override the directory if needed.
+
+```bash
+$ covd init --home /path/to/covd/home/
+```
+
+After initialization, the home directory will have the following structure
+
+```bash
+$ ls /path/to/covd/home/
+  ├── covd.conf # Covd-specific configuration file.
+  ├── logs     # Covd logs
+```
+
+If the `--home` flag is not specified, then the default home directory
+will be used. For different operating systems, those are:
+
+- **MacOS** `~/Users/<username>/Library/Application Support/Covd`
+- **Linux** `~/.Covd`
+- **Windows** `C:\Users\<username>\AppData\Local\Covd`
+
+Below are some important parameters of the `covd.conf` file.
+
+**Note**:
+The configuration below requires to point to the path where this keyring is stored `KeyDirectory`.
+This `Key` field stores the key name used for interacting with the Babylon chain
+and will be specified along with the `KeyringBackend` field in the next [step](#generate-key-pairs).
+So we can ignore the setting of the two fields in this step.
+
+```bash
+# The interval between each query for pending BTC delegations
+QueryInterval = 15s
+
+# The maximum number of delegations that the covd processes each time
+DelegationLimit = 100
+
+# Bitcoin network to run on
+BitcoinNetwork = simnet
+
+# Babylon specific parameters
+
+# Babylon chain ID
+ChainID = chain-test
+
+# Babylon node RPC endpoint
+RPCAddr = http://127.0.0.1:26657
+
+# Babylon node gRPC endpoint
+GRPCAddr = https://127.0.0.1:9090
+
+# Name of the key in the keyring to use for signing transactions
+Key = <finality-provider-key-name>
+
+# Type of keyring to use,
+# supported backends - (os|file|kwallet|pass|test|memory)
+# ref https://docs.cosmos.network/v0.46/run-node/keyring.html#available-backends-for-the-keyring
+KeyringBackend = test
+
+# Directory where keys will be retrieved from and stored
+KeyDirectory = /path/to/covd/home
+```
+
+To see the complete list of configuration options, check the `covd.conf` file.
+
+## Generate key pairs
