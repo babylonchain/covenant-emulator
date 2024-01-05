@@ -1,26 +1,44 @@
 # Covenant Emulator
 
 ## Overview
-Bitcoin scripts have limited functions to control the authorization of a transaction.
-Therefore, covenants are introduced as a means of restricting how funds may be spent including specifying how much must be spent and to what addresses.
-Covenants are essentially a committee that co-sign Bitcoin transactions making sure the funds are sent as expected.
-However, such a feature is not well-supported in the current Bitcoin network.
-To achieve a similar goal, we introduce the covenant emulator in our system to emulate Bitcoin covenants.
 
-Covenant members are predetermined and their public keys are recorded in the genesis file of the Babylon chain.
-Each member runs a `covenant-emulator` daemon (short for `covd`), which constantly monitors pending delegations on the Babylon chain and sends signatures if they are valid delegations.
-These delegations can only become active and empower the relevant finality provider until a sufficient number of covenant members have sent their signatures.
+Bitcoin scripts have limited functions to control the authorization of a
+transaction. Therefore, covenants are introduced as a means of restricting how
+funds may be spent including specifying how much must be spent and to what
+addresses. Covenants are essentially a committee that co-sign Bitcoin
+transactions making sure the funds are sent as expected. However, such a feature
+is not well-supported in the current Bitcoin network. To achieve a similar goal,
+we introduce the covenant emulator in our system to emulate Bitcoin covenants.
 
-Upon a pending delegation is found, the `covd` performs the following major checks:
-1. the unbonding time should be not less than the minimum unbonding time required in the system,
-2. all the params needed to build Bitcoin transactions are valid, and
-3. the address to which slashed funds will be sent is the same as that of the genesis parameter.
+Covenant members are predetermined and their public keys are recorded in the
+genesis file of the Babylon chain. Each member runs a `covenant-emulator` daemon
+(short for `covd`), which constantly monitors pending delegations on the Babylon
+chain and sends signatures if they are valid delegations. These delegations can
+only become active and empower the relevant finality provider until a sufficient
+number of covenant members have sent their signatures.
 
-If all the checks are passed, the `covd` will send three types of signatures to the Babylon chain:
-1. **Staking signature**. This signature is an [adaptor signature](https://medium.com/crypto-garage/adaptor-signature-schnorr-signature-and-ecdsa-da0663c2adc4), which signs over the slashing path of the staking transaction.
-   Due to the uniqueness of the adaptor signature, it also prevents a malicious finality provider from irrationally slashing delegations.
-2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature), which is needed for the staker to withdraw their funds before the time lock.
-3. **Unbonding slashing signature**. This signature is also an adaptor signature, which has similar usage to the **staking signature** but signs over the slashing path of the unbonding transaction.
+Upon a pending delegation is found, the `covd` performs the following major
+checks:
+
+1. the unbonding time should be not less than the minimum unbonding time
+required in the system
+2. all the params needed to build Bitcoin transactions are
+valid, and
+3. the address to which slashed funds will be sent is the same as that of the
+genesis parameter.
+
+If all the checks are passed, the `covd` will send three types of signatures to
+the Babylon chain:
+
+1. **Staking signature**. This signature is an [adaptor signature](https://medium.com/crypto-garage/adaptor-signature-schnorr-signature-and-ecdsa-da0663c2adc4),
+which signs over the slashing path of the staking transaction. Due to the
+uniqueness of the adaptor signature, it also prevents a malicious finality
+provider from irrationally slashing delegations.
+2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature),
+which is needed for the staker to withdraw their funds before the time lock.
+3. **Unbonding slashing signature**. This signature is also an adaptor
+signature, which has similar usage to the **staking signature** but signs over
+the slashing path of the unbonding transaction.
 
 ## Installation
 
@@ -54,8 +72,8 @@ At the top-level directory of the project
 $ make install 
 ```
 
-The above command will build and install the covenant-emulator daemon (`covd`) binary to
-`$GOPATH/bin`:
+The above command will build and install the covenant-emulator daemon (`covd`)
+binary to `$GOPATH/bin`:
 
 If your shell cannot find the installed binaries, make sure `$GOPATH/bin` is in
 the `$PATH` of your shell. Usually, these commands will do the job
@@ -73,6 +91,7 @@ $ make build
 
 The above command will put the built binaries in a build directory with the
 following structure:
+
 ```bash
 $ ls build
     └── covd
@@ -81,8 +100,7 @@ $ ls build
 Another common issue with compiling is that some of the dependencies have
 components written in C. If a C toolchain is absent, the Go compiler will throw
 errors. (Most likely it will complain about undefined names/types.) Make sure a
-C toolchain (for example, GCC or Clang) is available.
-On Ubuntu, this can be
+C toolchain (for example, GCC or Clang) is available. On Ubuntu, this can be
 installed by running
 
 ```bash
@@ -97,7 +115,8 @@ The `covd init` command initializes a home directory for the
 finality provider daemon.
 This directory is created in the default home location or in a
 location specified by the `--home` flag.
-If the home direction already exists, add `--force` to override the directory if needed.
+If the home direction already exists, add `--force` to override the directory if
+needed.
 
 ```bash
 $ covd init --home /path/to/covd/home/
@@ -121,10 +140,11 @@ will be used. For different operating systems, those are:
 Below are some important parameters of the `covd.conf` file.
 
 **Note**:
-The configuration below requires to point to the path where this keyring is stored `KeyDirectory`.
-This `Key` field stores the key name used for interacting with the Babylon chain
-and will be specified along with the `KeyringBackend` field in the next [step](#generate-key-pairs).
-So we can ignore the setting of the two fields in this step.
+The configuration below requires to point to the path where this keyring is
+stored `KeyDirectory`. This `Key` field stores the key name used for interacting
+with the Babylon chain and will be specified along with the `KeyringBackend`
+field in the next [step](#generate-key-pairs). So we can ignore the setting of
+the two fields in this step.
 
 ```bash
 # The interval between each query for pending BTC delegations
@@ -163,8 +183,9 @@ To see the complete list of configuration options, check the `covd.conf` file.
 
 ## Generate key pairs
 
-The covenant emulator daemon requires the existence of a keyring that signs signatures and interacts with Babylon.
-Use the following command to generate the key:
+The covenant emulator daemon requires the existence of a keyring that signs
+signatures and interacts with Babylon. Use the following command to generate the
+key:
 
 ```bash
 $ covd create-key --key-name covenant-key --chain-id chain-test
@@ -176,7 +197,8 @@ $ covd create-key --key-name covenant-key --chain-id chain-test
 
 After executing the above command, the key name will be saved in the config file
 created in [step](#configuration).
-Note that the `public-key` in the output should be used as one of the inputs of the genesis of the Babylon chain.
+Note that the `public-key` in the output should be used as one of the inputs of
+the genesis of the Babylon chain.
 
 ## Start the daemon
 
@@ -188,5 +210,5 @@ $ covd start
 2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
 ```
 
-All the available CLI options can be viewed using the `--help` flag. These options
-can also be set in the configuration file.
+All the available CLI options can be viewed using the `--help` flag. These
+options can also be set in the configuration file.
