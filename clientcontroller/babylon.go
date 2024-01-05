@@ -324,6 +324,7 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		StakingTxHex:    stakingTxHex,
 		SlashingTxHex:   slashingTxHex,
 		CovenantSigs:    covenantSigs,
+		UnbondingTime:   del.UnbondingTime,
 		BtcUndelegation: undelegation,
 	}
 }
@@ -373,7 +374,6 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		SlashingTxHex:         slashingTxHex,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
-		UnbondingTime:         undel.UnbondingTime,
 		DelegatorUnbondingSig: undel.DelegatorUnbondingSig,
 	}
 }

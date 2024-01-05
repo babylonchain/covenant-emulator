@@ -1,8 +1,9 @@
 package types
 
 import (
-	bbn "github.com/babylonchain/babylon/types"
 	"math"
+
+	bbn "github.com/babylonchain/babylon/types"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
@@ -29,6 +30,9 @@ type Delegation struct {
 	StakingOutputIdx uint32
 	// The hex string of the slashing tx
 	SlashingTxHex string
+	// UnbondingTime describes how long the funds will be locked either in unbonding output
+	// or slashing change output
+	UnbondingTime uint32
 	// The signatures on the slashing tx
 	// by the covenants (i.e., SKs corresponding to covenant_pks in params)
 	// It will be a part of the witness for the staking tx output.
@@ -57,8 +61,6 @@ func (d *Delegation) GetStakingTime() uint16 {
 
 // Undelegation signalizes that the delegation is being undelegated
 type Undelegation struct {
-	// How long the funds will be locked in the unbonding output
-	UnbondingTime uint32
 	// The hex string of the transaction which will transfer the funds from staking
 	// output to unbonding output. Unbonding output will usually have lower timelock
 	// than staking output.
