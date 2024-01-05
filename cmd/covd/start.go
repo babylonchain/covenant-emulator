@@ -49,7 +49,7 @@ func start(ctx *cli.Context) error {
 
 	logger, err := log.NewRootLoggerWithFile(covcfg.LogFile(homePath), cfg.LogLevel)
 	if err != nil {
-		return fmt.Errorf("failed to load the logger")
+		return fmt.Errorf("failed to load the logger: %w", err)
 	}
 
 	bbnClient, err := clientcontroller.NewBabylonController(cfg.BabylonConfig, &cfg.BTCNetParams, logger)
