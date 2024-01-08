@@ -2,20 +2,24 @@
 
 ## Overview
 
-Bitcoin scripts have limited functions to control the authorization of a
-transaction. Therefore, covenants are introduced as a means of restricting how
-funds may be spent including specifying how much must be spent and to what
-addresses. Covenants are essentially a committee that co-sign Bitcoin
-transactions making sure the funds are sent as expected. However, such a feature
-is not well-supported in the current Bitcoin network. To achieve a similar goal,
-we introduce the covenant emulator in our system to emulate Bitcoin covenants.
+Bitcoin scripts have limited functions to control how a transaction output can
+be spent. Therefore, [covenants](https://covenants.info/) are introduced as a
+means of introducing restrictions to the spending of UTXOs, including how much
+of their value can be spent and to what addresses that value can be transferred.
+However, such a feature has not been supported by the current Bitcoin network.
+To achieve a similar goal, we introduce the covenant emulator in our system to
+emulate Bitcoin covenants. In our system, covenants are essentially a committee
+that co-signs Bitcoin transactions making sure the funds (e.g., delegations and
+slashing) are sent as expected.
 
 Covenant members are predetermined and their public keys are recorded in the
-genesis file of the Babylon chain. Each member runs a `covenant-emulator` daemon
-(short for `covd`), which constantly monitors pending delegations on the Babylon
-chain and sends signatures if they are valid delegations. These delegations can
-only become active and empower the relevant finality provider until a sufficient
-number of covenant members have sent their signatures.
+genesis file of the Babylon chain. Changing the covenant committee requires a
+[governance proposal](https://docs.cosmos.network/v0.45/ibc/proposals.html).
+Each member runs a `covd` daemon (short for `covenant-emulator-daemon`), which
+constantly monitors pending delegations on the Babylon chain and sends
+signatures if they are valid delegations. These delegations can only become
+active and receive voting power after a sufficient number of
+covenant members have sent their signatures.
 
 Upon a pending delegation is found, the `covd` performs the following major
 checks:
@@ -27,13 +31,14 @@ valid, and
 3. the address to which slashed funds will be sent is the same as that of the
 genesis parameter.
 
-If all the checks are passed, the `covd` will send three types of signatures to
-the Babylon chain:
+If all the checks are passed, the covenant daemon will send three types of
+signatures to the Babylon chain:
 
-1. **Staking signature**. This signature is an [adaptor signature](https://medium.com/crypto-garage/adaptor-signature-schnorr-signature-and-ecdsa-da0663c2adc4),
+1. **Staking signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
 which signs over the slashing path of the staking transaction. Due to the
-uniqueness of the adaptor signature, it also prevents a malicious finality
-provider from irrationally slashing delegations.
+[recoverability](https://github.com/LLFourn/one-time-VES/blob/master/main.pdf)
+of the adaptor signature, it also prevents a malicious finality provider from
+irrationally slashing delegations.
 2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature),
 which is needed for the staker to withdraw their funds before the time lock.
 3. **Unbonding slashing signature**. This signature is also an adaptor
@@ -57,7 +62,7 @@ $ git clone git@github.com:babylonchain/covenant-emulator.git
 ```
 
 You can choose a specific version from
-the [official releases page](https://github.com/babylonchain/covenant-emulator/releases)
+the [official releases page](https://github.com/babylonchain/covenant-emulator/releases):
 
 ```bash
 $ cd covenant-emulator # cd into the project directory
@@ -204,7 +209,7 @@ the genesis of the Babylon chain.
 
 You can start the covenant emulator daemon using the following command:
 
-```bash
+```log
 $ covd start
 2024-01-05T05:59:09.429615Z	info	Starting Covenant Emulator
 2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
