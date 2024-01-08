@@ -209,7 +209,7 @@ the genesis of the Babylon chain.
 
 You can start the covenant emulator daemon using the following command:
 
-```log
+```bash
 $ covd start
 2024-01-05T05:59:09.429615Z	info	Starting Covenant Emulator
 2024-01-05T05:59:09.429713Z	info	Covenant Emulator Daemon is fully active!
