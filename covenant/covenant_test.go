@@ -59,7 +59,7 @@ func FuzzAddCovenantSig(f *testing.F) {
 		require.NoError(t, err)
 		stakingTimeBlocks := uint16(5)
 		stakingValue := int64(2 * 10e8)
-		unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
+		unbondingTime := uint16(params.MinimumUnbondingTime()) + 1
 		fpNum := datagen.RandomInt(r, 5) + 1
 		fpPks := testutil.GenBtcPublicKeys(r, t, int(fpNum))
 		testInfo := datagen.GenBTCStakingSlashingInfo(
