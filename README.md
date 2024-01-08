@@ -2,47 +2,51 @@
 
 ## Overview
 
-Bitcoin scripts have limited functions to control how a transaction output can
-be spent. Therefore, [covenants](https://covenants.info/) are introduced as a
-means of introducing restrictions to the spending of UTXOs, including how much
-of their value can be spent and to what addresses that value can be transferred.
-However, such a feature has not been supported by the current Bitcoin network.
-To achieve a similar goal, we introduce the covenant emulator in our system to
-emulate Bitcoin covenants. In our system, covenants are essentially a committee
-that co-signs Bitcoin transactions making sure the funds (e.g., delegations and
-slashing) are sent as expected.
+Babylon's BTC Staking protocol relies on enforced limitations on how the
+unspent transaction output (UTXO) that holds the staked Bitcoin can be spent.
+Unfortunately, Bitcoin scripts have limited functions to control how a
+transaction output can be spent. Therefore, [covenants](https://covenants.info/)
+are introduced as a means of introducing restrictions to the spending of UTXOs,
+including how much of their value can be spent and to what addresses that value
+can be transferred. However, covenants have not been supported by the live
+Bitcoin network. To achieve a similar goal, Babylon's BTC staking system relies
+on a covenant emulation committee that is responsible for co-signing
+transactions to ensure their proper formatting (e.g. slashing transactions 
+send the slashed funds to a burn address). The `covenant-emulator` program 
+included in this repository is the tool that covenant emulation participants 
+use to perform their duties.
 
-Covenant members are predetermined and their public keys are recorded in the
-genesis file of the Babylon chain. Changing the covenant committee requires a
-[governance proposal](https://docs.cosmos.network/v0.45/ibc/proposals.html).
-Each member runs a `covd` daemon (short for `covenant-emulator-daemon`), which
-constantly monitors pending delegations on the Babylon chain and sends
-signatures if they are valid delegations. These delegations can only become
-active and receive voting power after a sufficient number of
-covenant members have sent their signatures.
+Covenant emulation committee members are defined in the Babylon parameters and
+their public keys are recorded in the genesis file of the Babylon chain.
+Changing the covenant committee requires a
+[governance proposal](https://docs.cosmos.network/v0.50/build/modules/gov).
+Each committee member runs the `covd` daemon (short for 
+`covenant-emulator-daemon`), which
+constantly monitors staking requests on the Babylon chain, verifies the 
+validity of the Bitcoin transactions that are involved with them, and
+sends the necessary signatures if verification is passed.
+The staking requests can only become active and receive voting power
+if a sufficient quorum of covenant committee members have
+verified the validity of the transactions and sent corresponding signatures.
 
-Upon a pending delegation is found, the `covd` performs the following major
-checks:
-
-1. the unbonding time should be not less than the minimum unbonding time
-required in the system
-2. all the params needed to build Bitcoin transactions are
-valid, and
-3. the address to which slashed funds will be sent is the same as that of the
-genesis parameter.
+Upon a pending staking request being found, the covenant emulation daemon 
+(`covd`), validates the formatting of the staking, slashing, and unbonding transactions,
+for which the details can be found in the
+[Staking Script specification](https://github.com/babylonchain/babylon-private/blob/dev/docs/staking-script.md).
 
 If all the checks are passed, the covenant daemon will send three types of
 signatures to the Babylon chain:
 
-1. **Staking signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
+1. **Slashing signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
 which signs over the slashing path of the staking transaction. Due to the
 [recoverability](https://github.com/LLFourn/one-time-VES/blob/master/main.pdf)
 of the adaptor signature, it also prevents a malicious finality provider from
 irrationally slashing delegations.
 2. **Unbonding signature**. This signature is a [Schnorr signature](https://en.wikipedia.org/wiki/Schnorr_signature),
-which is needed for the staker to withdraw their funds before the time lock.
+which is needed for the staker to unlock their funds before the original 
+staking time lock expires (on-demand unbonding).
 3. **Unbonding slashing signature**. This signature is also an adaptor
-signature, which has similar usage to the **staking signature** but signs over
+signature, which has similar usage to the **slashing signature** but signs over
 the slashing path of the unbonding transaction.
 
 ## Installation
@@ -120,7 +124,7 @@ The `covd init` command initializes a home directory for the
 finality provider daemon.
 This directory is created in the default home location or in a
 location specified by the `--home` flag.
-If the home direction already exists, add `--force` to override the directory if
+If the home directory already exists, add `--force` to override the directory if
 needed.
 
 ```bash
@@ -132,7 +136,7 @@ After initialization, the home directory will have the following structure
 ```bash
 $ ls /path/to/covd/home/
   ├── covd.conf # Covd-specific configuration file.
-  ├── logs     # Covd logs
+  ├── logs      # Covd logs
 ```
 
 If the `--home` flag is not specified, then the default home directory
@@ -204,6 +208,8 @@ After executing the above command, the key name will be saved in the config file
 created in [step](#configuration).
 Note that the `public-key` in the output should be used as one of the inputs of
 the genesis of the Babylon chain.
+Also, this key will be used to pay for the fees due to the daemon submitting 
+signatures to Babylon.
 
 ## Start the daemon
 
