@@ -64,6 +64,7 @@ type TestManager struct {
 	EOTSClient        *client.EOTSManagerGRpcClient
 	FPBBNClient       *fpcc.BabylonController
 	CovBBNClient      *covcc.BabylonController
+	StakingParams     *types.StakingParams
 	baseDir           string
 }
 
@@ -79,7 +80,6 @@ type TestDelegationData struct {
 	FpPks                   []*btcec.PublicKey
 
 	SlashingAddr  string
-	ChangeAddr    string
 	StakingTime   uint16
 	StakingAmount int64
 }
@@ -151,9 +151,12 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		_, err := tm.FPBBNClient.QueryStakingParams()
-
-		return err == nil
+		params, err := tm.CovBBNClient.QueryStakingParams()
+		if err != nil {
+			return false
+		}
+		tm.StakingParams = params
+		return true
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("Babylon node is started")
@@ -244,7 +247,11 @@ func (tm *TestManager) WaitForFpRegistered(t *testing.T, bbnPk *secp256k1.PubKey
 
 func (tm *TestManager) WaitForFpPubRandCommitted(t *testing.T, fpIns *service.FinalityProviderInstance) {
 	require.Eventually(t, func() bool {
-		return fpIns.GetLastCommittedHeight() > 0
+		lastCommittedHeight, err := fpIns.GetLastCommittedHeight()
+		if err != nil {
+			return false
+		}
+		return lastCommittedHeight > 0
 	}, eventuallyWaitTimeOut, eventuallyPollTime)
 
 	t.Logf("public randomness is successfully committed")
@@ -274,7 +281,7 @@ func (tm *TestManager) WaitForFpNActiveDels(t *testing.T, btcPk *bbntypes.BIP340
 	var dels []*types.Delegation
 	currentBtcTip, err := tm.FPBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	params, err := tm.FPBBNClient.QueryStakingParams()
+	params, err := tm.CovBBNClient.QueryStakingParams()
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		dels, err = tm.CovBBNClient.QueryFinalityProviderDelegations(btcPk, 1000)
@@ -368,9 +375,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	delBtcPrivKey, delBtcPubKey, err := datagen.GenRandomBTCKeyPair(r)
 	require.NoError(t, err)
 
-	changeAddress, err := datagen.GenRandomBTCAddress(r, btcNetworkParams)
-	require.NoError(t, err)
-
+	unbondingTime := uint16(tm.StakingParams.MinimumUnbondingTime()) + 1
 	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
 		r,
 		t,
@@ -381,8 +386,9 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		params.CovenantQuorum,
 		stakingTime,
 		stakingAmount,
-		params.SlashingAddress.String(), changeAddress.String(),
+		params.SlashingAddress.String(),
 		params.SlashingRate,
+		unbondingTime,
 	)
 
 	// delegator Babylon key pairs
@@ -431,7 +437,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	)
 	require.NoError(t, err)
 
-	unbondingTime := uint16(params.FinalizationTimeoutBlocks) + 1
 	unbondingValue := stakingAmount - 1000
 	stakingTxHash := testStakingInfo.StakingTx.TxHash()
 
@@ -447,8 +452,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 		unbondingValue,
 		params.SlashingAddress.String(),
-		changeAddress.String(),
 		params.SlashingRate,
+		unbondingTime,
 	)
 
 	unbondingTxMsg := testUnbondingInfo.UnbondingTx
@@ -498,7 +503,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		StakingTxInfo:           txInfo,
 		DelegatorSig:            delegatorSig,
 		SlashingAddr:            params.SlashingAddress.String(),
-		ChangeAddr:              changeAddress.String(),
 		StakingTime:             stakingTime,
 		StakingAmount:           stakingAmount,
 	}

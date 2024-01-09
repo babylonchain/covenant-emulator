@@ -128,7 +128,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDel *types.Delegation) (*ty
 	// which is larger value from:
 	// - MinUnbondingTime
 	// - CheckpointFinalizationTimeout
-	unbondingTime := btcDel.BtcUndelegation.UnbondingTime
+	unbondingTime := btcDel.UnbondingTime
 	minUnbondingTime := ce.params.MinUnbondingTime
 	if unbondingTime <= minUnbondingTime {
 		return nil, fmt.Errorf("unbonding time %d must be larger than %d",
@@ -158,6 +158,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDel *types.Delegation) (*ty
 		int64(ce.params.MinSlashingTxFeeSat),
 		ce.params.SlashingRate,
 		ce.params.SlashingAddress,
+		btcDel.BtcPk,
+		uint16(unbondingTime),
 		&ce.config.BTCNetParams,
 	); err != nil {
 		return nil, fmt.Errorf("invalid txs in the delegation: %w", err)
@@ -179,7 +181,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDel *types.Delegation) (*ty
 		btcDel.FpBtcPks,
 		ce.params.CovenantPks,
 		ce.params.CovenantQuorum,
-		uint16(btcDel.BtcUndelegation.UnbondingTime),
+		uint16(unbondingTime),
 		btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
 		&ce.config.BTCNetParams,
 	)
@@ -194,6 +196,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDel *types.Delegation) (*ty
 		int64(ce.params.MinSlashingTxFeeSat),
 		ce.params.SlashingRate,
 		ce.params.SlashingAddress,
+		btcDel.BtcPk,
+		uint16(unbondingTime),
 		&ce.config.BTCNetParams,
 	)
 	if err != nil {
