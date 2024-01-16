@@ -18,8 +18,8 @@ import (
 
 var startCommand = cli.Command{
 	Name:        "start",
-	Usage:       "covd start",
-	Description: "Start the Covenant Emulator Daemon. Note that the Covenant should be created beforehand",
+	Usage:       "Start the Covenant Emulator Daemon",
+	Description: "Start the Covenant Emulator Daemon. Note that the Covenant key pair should be created beforehand",
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  passphraseFlag,
