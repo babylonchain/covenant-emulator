@@ -72,7 +72,7 @@ verified the validity of the transactions and sent corresponding signatures.
 
 Upon a pending staking request being found, the covenant emulation daemon 
 (`covd`), validates it against the spending rules defined in
-[Staking Script specification](https://github.com/babylonchain/babylon-private/blob/dev/docs/staking-script.md),
+[Staking Script specification](https://github.com/babylonchain/babylon/blob/dev/docs/staking-script.md),
 and sends three types of signatures to the Babylon chain:
 
 1. **Slashing signature**. This signature is an [adaptor signature](https://bitcoinops.org/en/topics/adaptor-signatures/),
