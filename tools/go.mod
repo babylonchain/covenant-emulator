@@ -4,7 +4,7 @@ go 1.21
 
 toolchain go1.21.4
 
-require github.com/babylonchain/babylon v0.7.1
+require github.com/babylonchain/babylon v0.7.2-0.20240121090242-60e5612f9acb
 
 require (
 	cloud.google.com/go v0.110.8 // indirect
@@ -211,9 +211,5 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace (
-	github.com/babylonchain/babylon => github.com/babylonchain/babylon v0.7.2-0.20240121090242-60e5612f9acb
-
-	// Downgraded to stable version see: https://github.com/cosmos/cosmos-sdk/pull/14952
-	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
-)
+// Downgraded to stable version see: https://github.com/cosmos/cosmos-sdk/pull/14952
+replace github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
