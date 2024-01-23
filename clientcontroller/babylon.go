@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
@@ -126,6 +128,7 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		SlashingAddress:           slashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
 		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
 	}, nil
 }
@@ -173,6 +176,10 @@ func (bc *BabylonController) SubmitCovenantSigs(
 
 func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*types.Delegation, error) {
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
+}
+
+func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
 }
 
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
@@ -423,6 +430,21 @@ func (bc *BabylonController) CreateBTCDelegation(
 	}
 
 	return &types.TxResponse{TxHash: res.TxHash}, nil
+}
+
+func (bc *BabylonController) RegisterFinalityProvider(
+	bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
+		Signer:      bc.mustGetTxSigner(),
+		Commission:  commission,
+		BabylonPk:   bbnPubKey,
+		BtcPk:       btcPubKey,
+		Description: description,
+		Pop:         pop,
+	}
+
+	return bc.reliablySendMsgs([]sdk.Msg{registerMsg})
 }
 
 // Insert BTC block header using rpc client

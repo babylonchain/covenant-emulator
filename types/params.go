@@ -27,6 +27,9 @@ type StakingParams struct {
 	// The staked amount to be slashed, expressed as a decimal (e.g., 0.5 for 50%).
 	SlashingRate sdkmath.LegacyDec
 
+	// Minimum commission rate
+	MinComissionRate sdkmath.LegacyDec
+
 	// The minimum time for unbonding transaction timelock in BTC blocks
 	MinUnbondingTime uint32
 }

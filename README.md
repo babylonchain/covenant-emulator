@@ -215,7 +215,7 @@ RPCAddr = http://127.0.0.1:26657
 GRPCAddr = https://127.0.0.1:9090
 
 # Name of the key in the keyring to use for signing transactions
-Key = <finality-provider-key-name>
+Key = <covenant-emulator-key-name>
 
 # Type of keyring to use,
 # supported backends - (os|file|kwallet|pass|test|memory)
