@@ -14,7 +14,6 @@ import (
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
@@ -432,6 +431,8 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
+// Register a finality provider to Babylon
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) RegisterFinalityProvider(
 	bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
 	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
@@ -513,35 +514,4 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	}
 
 	return res.Header, nil
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryFinalityProviderDelegations(fpBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*types.Delegation, error) {
-	return bc.getNFinalityProviderDelegationsMatchingCriteria(
-		fpBtcPk,
-		max,
-		// fitlering function which always returns true as we want all delegations
-		func(*types.Delegation) bool { return true },
-	)
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &finalitytypes.QueryVotesAtHeightRequest{
-		Height: height,
-	}
-	res, err := queryClient.VotesAtHeight(ctx, queryRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
-	}
-
-	return res.BtcPks, nil
 }
