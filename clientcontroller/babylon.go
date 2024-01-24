@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	sdkmath "cosmossdk.io/math"
 	"github.com/btcsuite/btcd/btcec/v2"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	finalitytypes "github.com/babylonchain/babylon/x/finality/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
@@ -126,6 +127,7 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 		SlashingAddress:           slashingAddress,
 		CovenantQuorum:            stakingParamRes.Params.CovenantQuorum,
 		SlashingRate:              stakingParamRes.Params.SlashingRate,
+		MinComissionRate:          stakingParamRes.Params.MinCommissionRate,
 		MinUnbondingTime:          stakingParamRes.Params.MinUnbondingTime,
 	}, nil
 }
@@ -175,6 +177,10 @@ func (bc *BabylonController) QueryPendingDelegations(limit uint64) ([]*types.Del
 	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_PENDING, limit)
 }
 
+func (bc *BabylonController) QueryActiveDelegations(limit uint64) ([]*types.Delegation, error) {
+	return bc.queryDelegationsWithStatus(btcstakingtypes.BTCDelegationStatus_ACTIVE, limit)
+}
+
 // queryDelegationsWithStatus queries BTC delegations that need a Covenant signature
 // with the given status (either pending or unbonding)
 // it is only used when the program is running in Covenant mode
@@ -194,75 +200,6 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	}
 
 	return dels, nil
-}
-
-func (bc *BabylonController) getNDelegations(
-	fpBtcPk *bbntypes.BIP340PubKey,
-	startKey []byte,
-	n uint64,
-) ([]*types.Delegation, []byte, error) {
-	pagination := &sdkquery.PageRequest{
-		Key:   startKey,
-		Limit: n,
-	}
-
-	res, err := bc.bbnClient.QueryClient.FinalityProviderDelegations(fpBtcPk.MarshalHex(), pagination)
-
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query BTC delegations: %v", err)
-	}
-
-	var delegations []*types.Delegation
-
-	for _, dels := range res.BtcDelegatorDelegations {
-		for _, d := range dels.Dels {
-			delegations = append(delegations, ConvertDelegationType(d))
-		}
-	}
-
-	var nextKey []byte
-
-	if res.Pagination != nil && res.Pagination.NextKey != nil {
-		nextKey = res.Pagination.NextKey
-	}
-
-	return delegations, nextKey, nil
-}
-
-func (bc *BabylonController) getNFinalityProviderDelegationsMatchingCriteria(
-	fpBtcPk *bbntypes.BIP340PubKey,
-	n uint64,
-	match func(*types.Delegation) bool,
-) ([]*types.Delegation, error) {
-	batchSize := 100
-	var delegations []*types.Delegation
-	var startKey []byte
-
-	for {
-		dels, nextKey, err := bc.getNDelegations(fpBtcPk, startKey, uint64(batchSize))
-		if err != nil {
-			return nil, err
-		}
-
-		for _, del := range dels {
-			if match(del) {
-				delegations = append(delegations, del)
-			}
-		}
-
-		if len(delegations) >= int(n) || len(nextKey) == 0 {
-			break
-		}
-
-		startKey = nextKey
-	}
-
-	if len(delegations) > int(n) {
-		// only return requested number of delegations
-		return delegations[:n], nil
-	} else {
-		return delegations, nil
-	}
 }
 
 func getContextWithCancel(timeout time.Duration) (context.Context, context.CancelFunc) {
@@ -425,6 +362,23 @@ func (bc *BabylonController) CreateBTCDelegation(
 	return &types.TxResponse{TxHash: res.TxHash}, nil
 }
 
+// Register a finality provider to Babylon
+// Currently this is only used for e2e tests, probably does not need to add it into the interface
+func (bc *BabylonController) RegisterFinalityProvider(
+	bbnPubKey *secp256k1.PubKey, btcPubKey *bbntypes.BIP340PubKey, commission *sdkmath.LegacyDec,
+	description *stakingtypes.Description, pop *btcstakingtypes.ProofOfPossession) (*provider.RelayerTxResponse, error) {
+	registerMsg := &btcstakingtypes.MsgCreateFinalityProvider{
+		Signer:      bc.mustGetTxSigner(),
+		Commission:  commission,
+		BabylonPk:   bbnPubKey,
+		BtcPk:       btcPubKey,
+		Description: description,
+		Pop:         pop,
+	}
+
+	return bc.reliablySendMsgs([]sdk.Msg{registerMsg})
+}
+
 // Insert BTC block header using rpc client
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderBytes) (*provider.RelayerTxResponse, error) {
@@ -491,35 +445,4 @@ func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo
 	}
 
 	return res.Header, nil
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryFinalityProviderDelegations(fpBtcPk *bbntypes.BIP340PubKey, max uint64) ([]*types.Delegation, error) {
-	return bc.getNFinalityProviderDelegationsMatchingCriteria(
-		fpBtcPk,
-		max,
-		// fitlering function which always returns true as we want all delegations
-		func(*types.Delegation) bool { return true },
-	)
-}
-
-// Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryVotesAtHeight(height uint64) ([]bbntypes.BIP340PubKey, error) {
-	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
-	defer cancel()
-
-	clientCtx := sdkclient.Context{Client: bc.bbnClient.RPCClient}
-
-	queryClient := finalitytypes.NewQueryClient(clientCtx)
-
-	// query all the unsigned delegations
-	queryRequest := &finalitytypes.QueryVotesAtHeightRequest{
-		Height: height,
-	}
-	res, err := queryClient.VotesAtHeight(ctx, queryRequest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query BTC delegations: %w", err)
-	}
-
-	return res.BtcPks, nil
 }
