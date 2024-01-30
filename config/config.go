@@ -19,6 +19,7 @@ const (
 	defaultCovenantKeyName = "covenant-key"
 	defaultQueryInterval   = 15 * time.Second
 	defaultDelegationLimit = uint64(100)
+	defaultSigsBatchSize   = uint64(100)
 	defaultBitcoinNetwork  = "simnet"
 	defaultLogDirname      = "logs"
 )
@@ -37,6 +38,7 @@ type Config struct {
 	LogLevel        string        `long:"loglevel" description:"Logging level for all subsystems" choice:"trace" choice:"debug" choice:"info" choice:"warn" choice:"error" choice:"fatal"`
 	QueryInterval   time.Duration `long:"queryinterval" description:"The interval between each query for pending BTC delegations"`
 	DelegationLimit uint64        `long:"delegationlimit" description:"The maximum number of delegations that the Covenant processes each time"`
+	SigsBatchSize   uint64        `long:"sigsbatchsize" description:"The maximum number of signatures to send in a single transaction"`
 	BitcoinNetwork  string        `long:"bitcoinnetwork" description:"Bitcoin network to run on" choice:"mainnet" choice:"regtest" choice:"testnet" choice:"simnet" choice:"signet"`
 
 	BTCNetParams chaincfg.Params
@@ -119,6 +121,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 		LogLevel:        defaultLogLevel,
 		QueryInterval:   defaultQueryInterval,
 		DelegationLimit: defaultDelegationLimit,
+		SigsBatchSize:   defaultSigsBatchSize,
 		BitcoinNetwork:  defaultBitcoinNetwork,
 		BTCNetParams:    defaultBTCNetParams,
 		BabylonConfig:   &bbnCfg,

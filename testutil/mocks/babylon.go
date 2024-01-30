@@ -8,8 +8,6 @@ import (
 	reflect "reflect"
 
 	types "github.com/babylonchain/covenant-emulator/types"
-	btcec "github.com/btcsuite/btcd/btcec/v2"
-	schnorr "github.com/btcsuite/btcd/btcec/v2/schnorr"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -81,16 +79,16 @@ func (mr *MockClientControllerMockRecorder) QueryStakingParams() *gomock.Call {
 }
 
 // SubmitCovenantSigs mocks base method.
-func (m *MockClientController) SubmitCovenantSigs(covPk *btcec.PublicKey, stakingTxHash string, sigs [][]byte, unbondingSig *schnorr.Signature, unbondingSlashingSigs [][]byte) (*types.TxResponse, error) {
+func (m *MockClientController) SubmitCovenantSigs(covSigMsgs []*types.CovenantSigs) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SubmitCovenantSigs", covPk, stakingTxHash, sigs, unbondingSig, unbondingSlashingSigs)
+	ret := m.ctrl.Call(m, "SubmitCovenantSigs", covSigMsgs)
 	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SubmitCovenantSigs indicates an expected call of SubmitCovenantSigs.
-func (mr *MockClientControllerMockRecorder) SubmitCovenantSigs(covPk, stakingTxHash, sigs, unbondingSig, unbondingSlashingSigs interface{}) *gomock.Call {
+func (mr *MockClientControllerMockRecorder) SubmitCovenantSigs(covSigMsgs interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSigs), covPk, stakingTxHash, sigs, unbondingSig, unbondingSlashingSigs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitCovenantSigs", reflect.TypeOf((*MockClientController)(nil).SubmitCovenantSigs), covSigMsgs)
 }
