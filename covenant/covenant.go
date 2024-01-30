@@ -299,9 +299,10 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 8. collect covenant sigs
+		txHash := stakingMsgTx.TxHash()
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             ce.pk,
-			StakingTxHash:         stakingMsgTx.TxHash(),
+			StakingTxHash:         &txHash,
 			SlashingSigs:          covSigs,
 			UnbondingSig:          covenantUnbondingSignature,
 			SlashingUnbondingSigs: covSlashingSigs,
@@ -323,7 +324,6 @@ func (ce *CovenantEmulator) getPrivKey() (*btcec.PrivateKey, error) {
 }
 
 // delegationsToBatches takes a list of delegations and splits them into batches
-// containing
 func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*types.Delegation {
 	batchSize := ce.config.SigsBatchSize
 	batches := make([][]*types.Delegation, 0)
@@ -337,6 +337,25 @@ func (ce *CovenantEmulator) delegationsToBatches(dels []*types.Delegation) [][]*
 	}
 
 	return batches
+}
+
+// removeAlreadySigned removes any delegations that have already been signed by the covenant
+func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*types.Delegation {
+	sanitized := make([]*types.Delegation, 0, len(dels))
+
+	for _, del := range dels {
+		alreadySigned := false
+		for _, covSig := range del.CovenantSigs {
+			if covSig.Pk.IsEqual(ce.pk) {
+				alreadySigned = true
+				break
+			}
+		}
+		if !alreadySigned {
+			sanitized = append(sanitized, del)
+		}
+	}
+	return sanitized
 }
 
 // covenantSigSubmissionLoop is the reactor to submit Covenant signature for BTC delegations
@@ -365,9 +384,11 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 			if len(dels) == 0 {
 				ce.logger.Debug("no pending delegations are found")
 			}
+			// 2. Remove delegations that do not need the covenant's signature
+			sanitizedDels := ce.removeAlreadySigned(dels)
 
-			batches := ce.delegationsToBatches(dels)
-
+			// 3. Split delegations into batches for submission
+			batches := ce.delegationsToBatches(sanitizedDels)
 			for _, delBatch := range batches {
 				_, err := ce.AddCovenantSignatures(delBatch)
 				if err != nil {
