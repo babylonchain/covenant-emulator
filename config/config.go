@@ -19,7 +19,7 @@ const (
 	defaultCovenantKeyName = "covenant-key"
 	defaultQueryInterval   = 15 * time.Second
 	defaultDelegationLimit = uint64(100)
-	defaultSigsBatchSize   = uint64(100)
+	defaultSigsBatchSize   = uint64(20)
 	defaultBitcoinNetwork  = "simnet"
 	defaultLogDirname      = "logs"
 )

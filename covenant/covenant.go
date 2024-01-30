@@ -1,7 +1,9 @@
 package covenant
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"strings"
 	"sync"
 	"time"
@@ -343,15 +345,16 @@ func (ce *CovenantEmulator) removeAlreadySigned(dels []*types.Delegation) []*typ
 	sanitized := make([]*types.Delegation, 0, len(dels))
 
 	for _, del := range dels {
+		delCopy := del
 		alreadySigned := false
-		for _, covSig := range del.CovenantSigs {
-			if covSig.Pk.IsEqual(ce.pk) {
+		for _, covSig := range delCopy.CovenantSigs {
+			if bytes.Equal(schnorr.SerializePubKey(covSig.Pk), schnorr.SerializePubKey(ce.pk)) {
 				alreadySigned = true
 				break
 			}
 		}
 		if !alreadySigned {
-			sanitized = append(sanitized, del)
+			sanitized = append(sanitized, delCopy)
 		}
 	}
 	return sanitized

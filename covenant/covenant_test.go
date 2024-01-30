@@ -178,7 +178,6 @@ func FuzzAddCovenantSig(f *testing.F) {
 				UnbondingSig:          unbondingCovSig,
 				SlashingUnbondingSigs: unbondingCovSlashingSigs,
 			})
-
 		}
 
 		// check the sigs are expected
