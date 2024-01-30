@@ -8,7 +8,7 @@ import (
 
 type CovenantSigs struct {
 	PublicKey             *btcec.PublicKey
-	StakingTxHash         *chainhash.Hash
+	StakingTxHash         chainhash.Hash
 	SlashingSigs          [][]byte
 	UnbondingSig          *schnorr.Signature
 	SlashingUnbondingSigs [][]byte

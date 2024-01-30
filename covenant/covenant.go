@@ -299,10 +299,9 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 8. collect covenant sigs
-		txHash := stakingMsgTx.TxHash()
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             ce.pk,
-			StakingTxHash:         &txHash,
+			StakingTxHash:         stakingMsgTx.TxHash(),
 			SlashingSigs:          covSigs,
 			UnbondingSig:          covenantUnbondingSignature,
 			SlashingUnbondingSigs: covSlashingSigs,
