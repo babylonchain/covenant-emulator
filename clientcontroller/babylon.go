@@ -15,7 +15,6 @@ import (
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
 	bbnclient "github.com/babylonchain/rpc-client/client"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -147,25 +146,20 @@ func (bc *BabylonController) reliablySendMsgs(msgs []sdk.Msg) (*provider.Relayer
 
 // SubmitCovenantSigs submits the Covenant signature via a MsgAddCovenantSig to Babylon if the daemon runs in Covenant mode
 // it returns tx hash and error
-func (bc *BabylonController) SubmitCovenantSigs(
-	covPk *btcec.PublicKey,
-	stakingTxHash string,
-	slashingSigs [][]byte,
-	unbondingSig *schnorr.Signature,
-	unbondingSlashingSigs [][]byte,
-) (*types.TxResponse, error) {
-	bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(unbondingSig)
-
-	msg := &btcstakingtypes.MsgAddCovenantSigs{
-		Signer:                  bc.mustGetTxSigner(),
-		Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covPk),
-		StakingTxHash:           stakingTxHash,
-		SlashingTxSigs:          slashingSigs,
-		UnbondingTxSig:          bip340UnbondingSig,
-		SlashingUnbondingTxSigs: unbondingSlashingSigs,
+func (bc *BabylonController) SubmitCovenantSigs(covSigs []*types.CovenantSigs) (*types.TxResponse, error) {
+	msgs := make([]sdk.Msg, 0, len(covSigs))
+	for _, covSig := range covSigs {
+		bip340UnbondingSig := bbntypes.NewBIP340SignatureFromBTCSig(covSig.UnbondingSig)
+		msgs = append(msgs, &btcstakingtypes.MsgAddCovenantSigs{
+			Signer:                  bc.mustGetTxSigner(),
+			Pk:                      bbntypes.NewBIP340PubKeyFromBTCPK(covSig.PublicKey),
+			StakingTxHash:           covSig.StakingTxHash.String(),
+			SlashingTxSigs:          covSig.SlashingSigs,
+			UnbondingTxSig:          bip340UnbondingSig,
+			SlashingUnbondingTxSigs: covSig.SlashingUnbondingSigs,
+		})
 	}
-
-	res, err := bc.reliablySendMsg(msg)
+	res, err := bc.reliablySendMsgs(msgs)
 	if err != nil {
 		return nil, err
 	}
