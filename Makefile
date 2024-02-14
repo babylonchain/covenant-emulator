@@ -29,6 +29,14 @@ endif
 BUILD_TARGETS := build install
 BUILD_FLAGS := --tags "$(build_tags)" --ldflags '$(ldflags)'
 
+# Update changelog vars
+ifneq (,$(SINCE_TAG))
+	sinceTag := --since-tag $(SINCE_TAG)
+endif
+ifneq (,$(UPCOMING_TAG))
+	upcomingTag := --future-release $(UPCOMING_TAG)
+endif
+
 all: build install
 
 build: BUILD_ARGS := $(build_args) -o $(BUILDDIR)
@@ -55,3 +63,11 @@ test-e2e:
 mock-gen:
 	mkdir -p $(MOCKS_DIR)
 	$(MOCKGEN_CMD) -source=clientcontroller/interface.go -package mocks -destination $(MOCKS_DIR)/babylon.go
+
+.PHONY: mock-gen
+
+update-changelog:
+	@echo ./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+	./scripts/update_changelog.sh $(sinceTag) $(upcomingTag)
+
+.PHONY: update-changelog
