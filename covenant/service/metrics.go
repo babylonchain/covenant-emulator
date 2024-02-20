@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -32,16 +33,20 @@ func CreatePrometheusServer(addr string, logger *zap.Logger) *PrometheusServer {
 }
 
 func (ps *PrometheusServer) Start() {
-	ps.logger.Info("starting Prometheus server",
+	ps.logger.Info("Starting Prometheus server",
 		zap.String("address", ps.svr.Addr))
 	if err := ps.svr.ListenAndServe(); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			ps.logger.Info("Prometheus server shutdown complete")
+			return
+		}
 		ps.logger.Fatal("failed to start Prometheus server",
 			zap.Error(err))
 	}
 }
 
 func (ps *PrometheusServer) Stop() {
-	ps.logger.Info("stopping Prometheus server")
+	ps.logger.Info("Stopping Prometheus server")
 	if err := ps.svr.Shutdown(context.Background()); err != nil {
 		ps.logger.Error("failed to stop the Prometheus server",
 			zap.Error(err))

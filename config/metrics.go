@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultMetricsPort = 2112
-	defaultMetricsHost = "0.0.0.0"
+	defaultMetricsHost = "127.0.0.1"
 )
 
 // MetricsConfig defines the server's basic configuration
