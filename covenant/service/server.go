@@ -19,8 +19,6 @@ type CovenantServer struct {
 	logger *zap.Logger
 
 	interceptor signal.Interceptor
-
-	quit chan struct{}
 }
 
 // NewCovenantServer creates a new server with the given config.
@@ -29,7 +27,6 @@ func NewCovenantServer(l *zap.Logger, ce *covenant.CovenantEmulator, sig signal.
 		logger:      l,
 		ce:          ce,
 		interceptor: sig,
-		quit:        make(chan struct{}, 1),
 	}
 }
 
@@ -40,12 +37,13 @@ func (s *CovenantServer) RunUntilShutdown() error {
 		return nil
 	}
 
-	promAddr, err := s.ce.Config().Metrics.Address()
+	metricsCfg := s.ce.Config().Metrics
+	promAddr, err := metricsCfg.Address()
 	if err != nil {
 		return err
 	}
 
-	ps := CreatePrometheusServer(promAddr, s.logger)
+	ps := CreatePrometheusServer(promAddr, metricsCfg.UpdateInterval, s.logger)
 
 	defer func() {
 		ps.Stop()
