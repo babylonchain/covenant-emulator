@@ -3,10 +3,11 @@ package covenant
 import (
 	"bytes"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -97,6 +98,10 @@ func NewCovenantEmulator(
 		pk:         pk,
 		quit:       make(chan struct{}),
 	}, nil
+}
+
+func (ce *CovenantEmulator) Config() *covcfg.Config {
+	return ce.config
 }
 
 func (ce *CovenantEmulator) UpdateParams() error {

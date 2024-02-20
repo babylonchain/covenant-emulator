@@ -40,10 +40,21 @@ func (s *CovenantServer) RunUntilShutdown() error {
 		return nil
 	}
 
+	promAddr, err := s.ce.Config().Metrics.Address()
+	if err != nil {
+		return err
+	}
+
+	ps := CreatePrometheusServer(promAddr, s.logger)
+
 	defer func() {
+		ps.Stop()
+		s.logger.Info("Shutdown Prometheus server complete")
 		_ = s.ce.Stop()
 		s.logger.Info("Shutdown covenant emulator server complete")
 	}()
+
+	go ps.Start()
 
 	if err := s.ce.Start(); err != nil {
 		return fmt.Errorf("failed to start covenant emulator: %w", err)

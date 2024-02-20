@@ -127,6 +127,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 	bbnCfg := DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName
 	bbnCfg.KeyDirectory = homePath
+	metricsCfg := DefaultMetricsConfig()
 	cfg := Config{
 		LogLevel:        defaultLogLevel,
 		QueryInterval:   defaultQueryInterval,
@@ -134,6 +135,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 		SigsBatchSize:   defaultSigsBatchSize,
 		BitcoinNetwork:  defaultBitcoinNetwork,
 		BTCNetParams:    defaultBTCNetParams,
+		Metrics:         &metricsCfg,
 		BabylonConfig:   &bbnCfg,
 	}
 
