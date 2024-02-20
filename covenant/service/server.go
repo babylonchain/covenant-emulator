@@ -43,7 +43,7 @@ func (s *CovenantServer) RunUntilShutdown() error {
 		return err
 	}
 
-	ps := CreatePrometheusServer(promAddr, metricsCfg.UpdateInterval, s.logger)
+	ps := NewPrometheusServer(promAddr, metricsCfg.UpdateInterval, s.logger)
 
 	defer func() {
 		ps.Stop()
