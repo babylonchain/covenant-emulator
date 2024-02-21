@@ -6,7 +6,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"go.uber.org/zap"
 )
 
 type metricsTimer struct {
@@ -99,34 +98,3 @@ var (
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	})
 )
-
-func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {
-	failedSignDelegations.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
-}
-
-func (ce *CovenantEmulator) recordMetricsTotalSignDelegationsSubmitted(n int) {
-	totalSignDelegationsSubmitted.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
-}
-
-func (ce *CovenantEmulator) recordMetricsCurrentPendingDelegations(n int) {
-	currentPendingDelegations.WithLabelValues(ce.PublicKeyStr()).Set(float64(n))
-}
-
-func (ce *CovenantEmulator) metricsUpdateLoop() {
-	defer ce.wg.Done()
-
-	interval := ce.config.Metrics.UpdateInterval
-	ce.logger.Info("starting metrics update loop",
-		zap.Float64("interval seconds", interval.Seconds()))
-
-	for {
-		metricsTimeKeeper.UpdatePrometheusMetrics()
-
-		select {
-		case <-time.After(interval):
-		case <-ce.quit:
-			ce.logger.Info("exiting metrics update loop")
-			return
-		}
-	}
-}

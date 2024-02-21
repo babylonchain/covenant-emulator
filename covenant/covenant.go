@@ -447,6 +447,25 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 
 }
 
+func (ce *CovenantEmulator) metricsUpdateLoop() {
+	defer ce.wg.Done()
+
+	interval := ce.config.Metrics.UpdateInterval
+	ce.logger.Info("starting metrics update loop",
+		zap.Float64("interval seconds", interval.Seconds()))
+
+	for {
+		metricsTimeKeeper.UpdatePrometheusMetrics()
+
+		select {
+		case <-time.After(interval):
+		case <-ce.quit:
+			ce.logger.Info("exiting metrics update loop")
+			return
+		}
+	}
+}
+
 func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {
 	sdkCtx, err := keyring.CreateClientCtx(
 		keyringDir, chainID,
@@ -491,6 +510,18 @@ func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
 	}
 
 	return params, nil
+}
+
+func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {
+	failedSignDelegations.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
+}
+
+func (ce *CovenantEmulator) recordMetricsTotalSignDelegationsSubmitted(n int) {
+	totalSignDelegationsSubmitted.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
+}
+
+func (ce *CovenantEmulator) recordMetricsCurrentPendingDelegations(n int) {
+	currentPendingDelegations.WithLabelValues(ce.PublicKeyStr()).Set(float64(n))
 }
 
 func (ce *CovenantEmulator) Start() error {
