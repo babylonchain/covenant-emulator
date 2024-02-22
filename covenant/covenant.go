@@ -453,13 +453,14 @@ func (ce *CovenantEmulator) metricsUpdateLoop() {
 	interval := ce.config.Metrics.UpdateInterval
 	ce.logger.Info("starting metrics update loop",
 		zap.Float64("interval seconds", interval.Seconds()))
+	updateTicker := time.NewTicker(interval)
 
 	for {
-		metricsTimeKeeper.UpdatePrometheusMetrics()
-
 		select {
-		case <-time.After(interval):
+		case <-updateTicker.C:
+			metricsTimeKeeper.UpdatePrometheusMetrics()
 		case <-ce.quit:
+			updateTicker.Stop()
 			ce.logger.Info("exiting metrics update loop")
 			return
 		}
@@ -529,9 +530,8 @@ func (ce *CovenantEmulator) Start() error {
 	ce.startOnce.Do(func() {
 		ce.logger.Info("Starting Covenant Emulator")
 
-		ce.wg.Add(1)
+		ce.wg.Add(2)
 		go ce.covenantSigSubmissionLoop()
-		ce.wg.Add(1)
 		go ce.metricsUpdateLoop()
 	})
 
