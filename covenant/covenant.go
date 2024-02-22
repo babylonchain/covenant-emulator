@@ -2,6 +2,7 @@ package covenant
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"sync"
@@ -98,6 +99,14 @@ func NewCovenantEmulator(
 		pk:         pk,
 		quit:       make(chan struct{}),
 	}, nil
+}
+
+func (ce *CovenantEmulator) Config() *covcfg.Config {
+	return ce.config
+}
+
+func (ce *CovenantEmulator) PublicKeyStr() string {
+	return hex.EncodeToString(schnorr.SerializePubKey(ce.pk))
 }
 
 func (ce *CovenantEmulator) UpdateParams() error {
@@ -220,6 +229,10 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		}
 
 		// 5. sign covenant staking sigs
+		// record metrics
+		startSignTime := time.Now()
+		metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
+
 		covenantPrivKey, err := ce.getPrivKey()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Covenant private key: %w", err)
@@ -308,6 +321,11 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			covSlashingSigs = append(covSlashingSigs, covenantSig.MustMarshal())
 		}
 
+		// record metrics
+		finishSignTime := time.Now()
+		metricsTimeKeeper.SetPreviousSignFinish(&finishSignTime)
+		timedSignDelegationLag.Observe(time.Since(startSignTime).Seconds())
+
 		// 8. collect covenant sigs
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             ce.pk,
@@ -317,8 +335,20 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			SlashingUnbondingSigs: covSlashingSigs,
 		})
 	}
+
 	// 9. submit covenant sigs
-	return ce.cc.SubmitCovenantSigs(covenantSigs)
+	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
+	if err != nil {
+		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
+		return nil, err
+	}
+
+	// record metrics
+	submittedTime := time.Now()
+	metricsTimeKeeper.SetPreviousSubmission(&submittedTime)
+	ce.recordMetricsTotalSignDelegationsSubmitted(len(covenantSigs))
+
+	return res, nil
 }
 
 func (ce *CovenantEmulator) getPrivKey() (*btcec.PrivateKey, error) {
@@ -376,6 +406,9 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 	limit := ce.config.DelegationLimit
 	covenantSigTicker := time.NewTicker(interval)
 
+	ce.logger.Info("starting signature submission loop",
+		zap.Float64("interval seconds", interval.Seconds()))
+
 	for {
 		select {
 		case <-covenantSigTicker.C:
@@ -391,6 +424,10 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 				ce.logger.Debug("failed to get pending delegations", zap.Error(err))
 				continue
 			}
+
+			// record delegation metrics
+			ce.recordMetricsCurrentPendingDelegations(len(dels))
+
 			if len(dels) == 0 {
 				ce.logger.Debug("no pending delegations are found")
 			}
@@ -415,6 +452,26 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 		}
 	}
 
+}
+
+func (ce *CovenantEmulator) metricsUpdateLoop() {
+	defer ce.wg.Done()
+
+	interval := ce.config.Metrics.UpdateInterval
+	ce.logger.Info("starting metrics update loop",
+		zap.Float64("interval seconds", interval.Seconds()))
+	updateTicker := time.NewTicker(interval)
+
+	for {
+		select {
+		case <-updateTicker.C:
+			metricsTimeKeeper.UpdatePrometheusMetrics()
+		case <-ce.quit:
+			updateTicker.Stop()
+			ce.logger.Info("exiting metrics update loop")
+			return
+		}
+	}
 }
 
 func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath string) (*types.ChainKeyInfo, error) {
@@ -463,13 +520,26 @@ func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
 	return params, nil
 }
 
+func (ce *CovenantEmulator) recordMetricsFailedSignDelegations(n int) {
+	failedSignDelegations.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
+}
+
+func (ce *CovenantEmulator) recordMetricsTotalSignDelegationsSubmitted(n int) {
+	totalSignDelegationsSubmitted.WithLabelValues(ce.PublicKeyStr()).Add(float64(n))
+}
+
+func (ce *CovenantEmulator) recordMetricsCurrentPendingDelegations(n int) {
+	currentPendingDelegations.WithLabelValues(ce.PublicKeyStr()).Set(float64(n))
+}
+
 func (ce *CovenantEmulator) Start() error {
 	var startErr error
 	ce.startOnce.Do(func() {
 		ce.logger.Info("Starting Covenant Emulator")
 
-		ce.wg.Add(1)
+		ce.wg.Add(2)
 		go ce.covenantSigSubmissionLoop()
+		go ce.metricsUpdateLoop()
 	})
 
 	return startErr
@@ -480,8 +550,6 @@ func (ce *CovenantEmulator) Stop() error {
 	ce.stopOnce.Do(func() {
 		ce.logger.Info("Stopping Covenant Emulator")
 
-		// Always stop the submission loop first to not generate additional events and actions
-		ce.logger.Debug("Stopping submission loop")
 		close(ce.quit)
 		ce.wg.Wait()
 
