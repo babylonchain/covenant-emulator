@@ -266,6 +266,7 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 	var (
 		covenantSlashingSigs  []*types.CovenantAdaptorSigInfo
 		covenantUnbondingSigs []*types.CovenantSchnorrSigInfo
+		err                   error
 	)
 
 	if undel.UnbondingTxHex == "" {
@@ -296,9 +297,12 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 		covenantSlashingSigs = append(covenantSlashingSigs, covSigInfo)
 	}
 
-	delegatorUnbondingSig, err := bbntypes.NewBIP340SignatureFromHex(undel.DelegatorUnbondingSigHex)
-	if err != nil {
-		return nil, err
+	delegatorUnbondingSig := new(bbntypes.BIP340Signature)
+	if undel.DelegatorUnbondingSigHex != "" {
+		delegatorUnbondingSig, err = bbntypes.NewBIP340SignatureFromHex(undel.DelegatorUnbondingSigHex)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &types.Undelegation{
