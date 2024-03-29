@@ -119,15 +119,15 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 	covenantSigs := make([]*types.CovenantSigs, 0, len(btcDels))
 	for _, btcDel := range btcDels {
 		// 0. nil checks
+		if btcDel == nil {
+			return nil, fmt.Errorf("empty delegation")
+		}
+	
 		ce.logger.Debug("processing a pending delegation",
 			zap.String("staker_pk", bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()),
 			zap.String("staking_tx_hex", btcDel.StakingTxHex),
 			zap.String("slashing_tx_hex", btcDel.SlashingTxHex),
 		)
-
-		if btcDel == nil {
-			return nil, fmt.Errorf("empty delegation")
-		}
 
 		if btcDel.BtcUndelegation == nil {
 			return nil, fmt.Errorf("empty undelegation")
