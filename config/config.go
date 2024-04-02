@@ -43,6 +43,8 @@ type Config struct {
 
 	BTCNetParams chaincfg.Params
 
+	Metrics *MetricsConfig `group:"metrics" namespace:"metrics"`
+
 	BabylonConfig *BBNConfig `group:"babylon" namespace:"babylon"`
 }
 
@@ -83,6 +85,14 @@ func LoadConfig(homePath string) (*Config, error) {
 // illegal values or combination of values are set. All file system paths are
 // normalized. The cleaned up config is returned on success.
 func (cfg *Config) Validate() error {
+	if cfg.Metrics == nil {
+		return fmt.Errorf("empty metrics config")
+	}
+
+	if err := cfg.Metrics.Validate(); err != nil {
+		return fmt.Errorf("invalid metrics config")
+	}
+
 	switch cfg.BitcoinNetwork {
 	case "mainnet":
 		cfg.BTCNetParams = chaincfg.MainNetParams
@@ -117,6 +127,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 	bbnCfg := DefaultBBNConfig()
 	bbnCfg.Key = defaultCovenantKeyName
 	bbnCfg.KeyDirectory = homePath
+	metricsCfg := DefaultMetricsConfig()
 	cfg := Config{
 		LogLevel:        defaultLogLevel,
 		QueryInterval:   defaultQueryInterval,
@@ -124,6 +135,7 @@ func DefaultConfigWithHomePath(homePath string) Config {
 		SigsBatchSize:   defaultSigsBatchSize,
 		BitcoinNetwork:  defaultBitcoinNetwork,
 		BTCNetParams:    defaultBTCNetParams,
+		Metrics:         &metricsCfg,
 		BabylonConfig:   &bbnCfg,
 	}
 

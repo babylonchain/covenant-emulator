@@ -2,7 +2,6 @@ package clientcontroller
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -189,8 +188,13 @@ func (bc *BabylonController) queryDelegationsWithStatus(status btcstakingtypes.B
 	}
 
 	dels := make([]*types.Delegation, 0, len(res.BtcDelegations))
-	for _, d := range res.BtcDelegations {
-		dels = append(dels, ConvertDelegationType(d))
+	for _, delResp := range res.BtcDelegations {
+		del, err := DelegationRespToDelegation(delResp)
+		if err != nil {
+			return nil, err
+		}
+
+		dels = append(dels, del)
 	}
 
 	return dels, nil
@@ -209,25 +213,20 @@ func (bc *BabylonController) Close() error {
 	return bc.bbnClient.Stop()
 }
 
-func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation {
+func DelegationRespToDelegation(del *btcstakingtypes.BTCDelegationResponse) (*types.Delegation, error) {
 	var (
-		stakingTxHex  string
-		slashingTxHex string
-		covenantSigs  []*types.CovenantAdaptorSigInfo
-		undelegation  *types.Undelegation
+		covenantSigs []*types.CovenantAdaptorSigInfo
+		undelegation *types.Undelegation
+		err          error
 	)
 
-	if del.StakingTx == nil {
-		panic(fmt.Errorf("staking tx should not be empty in delegation"))
+	if del.StakingTxHex == "" {
+		return nil, fmt.Errorf("staking tx should not be empty in delegation")
 	}
 
-	if del.SlashingTx == nil {
-		panic(fmt.Errorf("slashing tx should not be empty in delegation"))
+	if del.SlashingTxHex == "" {
+		return nil, fmt.Errorf("slashing tx should not be empty in delegation")
 	}
-
-	stakingTxHex = hex.EncodeToString(del.StakingTx)
-
-	slashingTxHex = del.SlashingTx.ToHexStr()
 
 	for _, s := range del.CovenantSigs {
 		covSigInfo := &types.CovenantAdaptorSigInfo{
@@ -237,8 +236,11 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		covenantSigs = append(covenantSigs, covSigInfo)
 	}
 
-	if del.BtcUndelegation != nil {
-		undelegation = ConvertUndelegationType(del.BtcUndelegation)
+	if del.UndelegationResponse != nil {
+		undelegation, err = UndelegationRespToUndelegation(del.UndelegationResponse)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	fpBtcPks := make([]*btcec.PublicKey, 0, len(del.FpBtcPkList))
@@ -252,39 +254,34 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 		TotalSat:         del.TotalSat,
 		StartHeight:      del.StartHeight,
 		EndHeight:        del.EndHeight,
-		StakingTxHex:     stakingTxHex,
-		SlashingTxHex:    slashingTxHex,
+		StakingTxHex:     del.StakingTxHex,
+		SlashingTxHex:    del.SlashingTxHex,
 		StakingOutputIdx: del.StakingOutputIdx,
 		CovenantSigs:     covenantSigs,
 		UnbondingTime:    del.UnbondingTime,
 		BtcUndelegation:  undelegation,
-	}
+	}, nil
 }
 
-func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Undelegation {
+func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationResponse) (*types.Undelegation, error) {
 	var (
-		unbondingTxHex        string
-		slashingTxHex         string
 		covenantSlashingSigs  []*types.CovenantAdaptorSigInfo
 		covenantUnbondingSigs []*types.CovenantSchnorrSigInfo
+		err                   error
 	)
 
-	if undel.UnbondingTx == nil {
-		panic(fmt.Errorf("staking tx should not be empty in undelegation"))
+	if undel.UnbondingTxHex == "" {
+		return nil, fmt.Errorf("staking tx should not be empty in undelegation")
 	}
 
-	if undel.SlashingTx == nil {
-		panic(fmt.Errorf("slashing tx should not be empty in undelegation"))
+	if undel.SlashingTxHex == "" {
+		return nil, fmt.Errorf("slashing tx should not be empty in undelegation")
 	}
-
-	unbondingTxHex = hex.EncodeToString(undel.UnbondingTx)
-
-	slashingTxHex = undel.SlashingTx.ToHexStr()
 
 	for _, unbondingSig := range undel.CovenantUnbondingSigList {
 		sig, err := unbondingSig.Sig.ToBTCSig()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		sigInfo := &types.CovenantSchnorrSigInfo{
 			Pk:  unbondingSig.Pk.MustToBTCPK(),
@@ -301,13 +298,21 @@ func ConvertUndelegationType(undel *btcstakingtypes.BTCUndelegation) *types.Unde
 		covenantSlashingSigs = append(covenantSlashingSigs, covSigInfo)
 	}
 
+	delegatorUnbondingSig := new(bbntypes.BIP340Signature)
+	if undel.DelegatorUnbondingSigHex != "" {
+		delegatorUnbondingSig, err = bbntypes.NewBIP340SignatureFromHex(undel.DelegatorUnbondingSigHex)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &types.Undelegation{
-		UnbondingTxHex:        unbondingTxHex,
-		SlashingTxHex:         slashingTxHex,
+		UnbondingTxHex:        undel.UnbondingTxHex,
+		SlashingTxHex:         undel.SlashingTxHex,
 		CovenantSlashingSigs:  covenantSlashingSigs,
 		CovenantUnbondingSigs: covenantUnbondingSigs,
-		DelegatorUnbondingSig: undel.DelegatorUnbondingSig,
-	}
+		DelegatorUnbondingSig: delegatorUnbondingSig,
+	}, nil
 }
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
@@ -392,8 +397,8 @@ func (bc *BabylonController) InsertBtcBlockHeaders(headers []bbntypes.BTCHeaderB
 
 // QueryFinalityProvider queries finality providers
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProvider, error) {
-	var fps []*btcstakingtypes.FinalityProvider
+func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.FinalityProviderResponse, error) {
+	var fps []*btcstakingtypes.FinalityProviderResponse
 	pagination := &sdkquery.PageRequest{
 		Limit: 100,
 	}
@@ -425,7 +430,7 @@ func (bc *BabylonController) QueryFinalityProviders() ([]*btcstakingtypes.Finali
 }
 
 // Currently this is only used for e2e tests, probably does not need to add this into the interface
-func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfo, error) {
+func (bc *BabylonController) QueryBtcLightClientTip() (*btclctypes.BTCHeaderInfoResponse, error) {
 	ctx, cancel := getContextWithCancel(bc.cfg.Timeout)
 	defer cancel()
 

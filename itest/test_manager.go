@@ -263,15 +263,17 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
-	currentBtcTip, err := tm.CovBBNClient.QueryBtcLightClientTip()
+	currentBtcTipResp, err := tm.CovBBNClient.QueryBtcLightClientTip()
 	require.NoError(t, err)
-	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, currentBtcTip.Header.ToBlockHeader(), testStakingInfo.StakingTx)
+	tipHeader, err := bbntypes.NewBTCHeaderBytesFromHex(currentBtcTipResp.HeaderHex)
+	require.NoError(t, err)
+	blockWithStakingTx := datagen.CreateBlockWithTransaction(r, tipHeader.ToBlockHeader(), testStakingInfo.StakingTx)
 	accumulatedWork := btclctypes.CalcWork(&blockWithStakingTx.HeaderBytes)
-	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, *currentBtcTip.Work)
+	accumulatedWork = btclctypes.CumulativeWork(accumulatedWork, currentBtcTipResp.Work)
 	parentBlockHeaderInfo := &btclctypes.BTCHeaderInfo{
 		Header: &blockWithStakingTx.HeaderBytes,
 		Hash:   blockWithStakingTx.HeaderBytes.Hash(),
-		Height: currentBtcTip.Height + 1,
+		Height: currentBtcTipResp.Height + 1,
 		Work:   &accumulatedWork,
 	}
 	headers := make([]bbntypes.BTCHeaderBytes, 0)
