@@ -247,16 +247,17 @@ func ConvertDelegationType(del *btcstakingtypes.BTCDelegation) *types.Delegation
 	}
 
 	return &types.Delegation{
-		BtcPk:           del.BtcPk.MustToBTCPK(),
-		FpBtcPks:        fpBtcPks,
-		TotalSat:        del.TotalSat,
-		StartHeight:     del.StartHeight,
-		EndHeight:       del.EndHeight,
-		StakingTxHex:    stakingTxHex,
-		SlashingTxHex:   slashingTxHex,
-		CovenantSigs:    covenantSigs,
-		UnbondingTime:   del.UnbondingTime,
-		BtcUndelegation: undelegation,
+		BtcPk:            del.BtcPk.MustToBTCPK(),
+		FpBtcPks:         fpBtcPks,
+		TotalSat:         del.TotalSat,
+		StartHeight:      del.StartHeight,
+		EndHeight:        del.EndHeight,
+		StakingTxHex:     stakingTxHex,
+		SlashingTxHex:    slashingTxHex,
+		StakingOutputIdx: del.StakingOutputIdx,
+		CovenantSigs:     covenantSigs,
+		UnbondingTime:    del.UnbondingTime,
+		BtcUndelegation:  undelegation,
 	}
 }
 

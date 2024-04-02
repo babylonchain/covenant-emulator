@@ -24,6 +24,7 @@ import (
 	covcc "github.com/babylonchain/covenant-emulator/clientcontroller"
 	covcfg "github.com/babylonchain/covenant-emulator/config"
 	"github.com/babylonchain/covenant-emulator/covenant"
+	"github.com/babylonchain/covenant-emulator/testutil"
 	"github.com/babylonchain/covenant-emulator/types"
 )
 
@@ -238,7 +239,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	require.NoError(t, err)
 
 	unbondingTime := uint16(tm.StakingParams.MinimumUnbondingTime()) + 1
-	testStakingInfo := datagen.GenBTCStakingSlashingInfo(
+	testStakingInfo := testutil.GenBTCStakingSlashingInfo(
 		r,
 		t,
 		btcNetworkParams,
@@ -293,7 +294,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	// delegator sig
 	delegatorSig, err := testStakingInfo.SlashingTx.Sign(
 		testStakingInfo.StakingTx,
-		0,
+		1,
 		slashignSpendInfo.GetPkScriptPath(),
 		delBtcPrivKey,
 	)
@@ -310,7 +311,7 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		fpPks,
 		params.CovenantPks,
 		params.CovenantQuorum,
-		wire.NewOutPoint(&stakingTxHash, 0),
+		wire.NewOutPoint(&stakingTxHash, 1),
 		unbondingTime,
 		unbondingValue,
 		params.SlashingAddress.String(),
