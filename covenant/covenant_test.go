@@ -51,9 +51,6 @@ func FuzzAddCovenantSig(f *testing.F) {
 		ce, err := covenant.NewCovenantEmulator(&covenantConfig, mockClientController, passphrase, zap.NewNop())
 		require.NoError(t, err)
 
-		err = ce.UpdateParams()
-		require.NoError(t, err)
-
 		numDels := datagen.RandomInt(r, 3) + 1
 		covSigsSet := make([]*types.CovenantSigs, 0, numDels)
 		btcDels := make([]*types.Delegation, 0, numDels)

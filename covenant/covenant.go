@@ -49,7 +49,6 @@ type CovenantEmulator struct {
 	kc *keyring.ChainKeyringController
 
 	config *covcfg.Config
-	params *types.StakingParams
 	logger *zap.Logger
 
 	// input is used to pass passphrase to the keyring
@@ -109,16 +108,6 @@ func (ce *CovenantEmulator) PublicKeyStr() string {
 	return hex.EncodeToString(schnorr.SerializePubKey(ce.pk))
 }
 
-func (ce *CovenantEmulator) UpdateParams() error {
-	params, err := ce.getParamsWithRetry()
-	if err != nil {
-		return err
-	}
-	ce.params = params
-
-	return nil
-}
-
 // AddCovenantSignatures adds a Covenant signature on the given Bitcoin delegation and submits it to Babylon
 // TODO: break this function into smaller components
 func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (*types.TxResponse, error) {
@@ -136,8 +125,14 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			return nil, fmt.Errorf("empty undelegation")
 		}
 
+		// 1. get the params matched to the delegation version
+		params, err := ce.getParamsByVersionWithRetry(btcDel.ParamsVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get staking params with version %d: %w", btcDel.ParamsVersion, err)
+		}
+
 		// 1. the quorum is already achieved, skip sending more sigs
-		if btcDel.HasCovenantQuorum(ce.params.CovenantQuorum) {
+		if btcDel.HasCovenantQuorum(params.CovenantQuorum) {
 			return nil, nil
 		}
 
@@ -146,7 +141,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		// - MinUnbondingTime
 		// - CheckpointFinalizationTimeout
 		unbondingTime := btcDel.UnbondingTime
-		minUnbondingTime := ce.params.MinUnbondingTime
+		minUnbondingTime := params.MinUnbondingTime
 		if unbondingTime <= minUnbondingTime {
 			return nil, fmt.Errorf("unbonding time %d must be larger than %d",
 				unbondingTime, minUnbondingTime)
@@ -172,9 +167,9 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			slashingMsgTx,
 			stakingMsgTx,
 			btcDel.StakingOutputIdx,
-			int64(ce.params.MinSlashingTxFeeSat),
-			ce.params.SlashingRate,
-			ce.params.SlashingAddress,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingAddress,
 			btcDel.BtcPk,
 			uint16(unbondingTime),
 			&ce.config.BTCNetParams,
@@ -203,8 +198,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		unbondingInfo, err := btcstaking.BuildUnbondingInfo(
 			btcDel.BtcPk,
 			btcDel.FpBtcPks,
-			ce.params.CovenantPks,
-			ce.params.CovenantQuorum,
+			params.CovenantPks,
+			params.CovenantQuorum,
 			uint16(unbondingTime),
 			btcutil.Amount(unbondingMsgTx.TxOut[0].Value),
 			&ce.config.BTCNetParams,
@@ -217,9 +212,9 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			unbondingSlashingMsgTx,
 			unbondingMsgTx,
 			0,
-			int64(ce.params.MinSlashingTxFeeSat),
-			ce.params.SlashingRate,
-			ce.params.SlashingAddress,
+			int64(params.MinSlashingTxFeeSat),
+			params.SlashingRate,
+			params.SlashingAddress,
 			btcDel.BtcPk,
 			uint16(unbondingTime),
 			&ce.config.BTCNetParams,
@@ -241,8 +236,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		stakingInfo, err := btcstaking.BuildStakingInfo(
 			btcDel.BtcPk,
 			btcDel.FpBtcPks,
-			ce.params.CovenantPks,
-			ce.params.CovenantQuorum,
+			params.CovenantPks,
+			params.CovenantQuorum,
 			btcDel.GetStakingTime(),
 			btcutil.Amount(btcDel.TotalSat),
 			&ce.config.BTCNetParams,
@@ -412,12 +407,6 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 	for {
 		select {
 		case <-covenantSigTicker.C:
-			// 0. Update slashing address in case it is changed upon governance proposal
-			if err := ce.UpdateParams(); err != nil {
-				ce.logger.Debug("failed to get staking params", zap.Error(err))
-				continue
-			}
-
 			// 1. Get all pending delegations
 			dels, err := ce.cc.QueryPendingDelegations(limit)
 			if err != nil {
@@ -494,14 +483,14 @@ func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath
 	return krController.CreateChainKey(passphrase, hdPath)
 }
 
-func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
+func (ce *CovenantEmulator) getParamsByVersionWithRetry(version uint32) (*types.StakingParams, error) {
 	var (
 		params *types.StakingParams
 		err    error
 	)
 
 	if err := retry.Do(func() error {
-		params, err = ce.cc.QueryStakingParams()
+		params, err = ce.cc.QueryStakingParamsByVersion(version)
 		if err != nil {
 			return err
 		}

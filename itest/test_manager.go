@@ -116,7 +116,7 @@ func StartManager(t *testing.T) *TestManager {
 func (tm *TestManager) WaitForServicesStart(t *testing.T) {
 	// wait for Babylon node starts
 	require.Eventually(t, func() bool {
-		params, err := tm.CovBBNClient.QueryStakingParams()
+		params, err := tm.CovBBNClient.QueryStakingParamsByVersion(0)
 		if err != nil {
 			return false
 		}

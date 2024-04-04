@@ -63,19 +63,19 @@ func (mr *MockClientControllerMockRecorder) QueryPendingDelegations(limit interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryPendingDelegations", reflect.TypeOf((*MockClientController)(nil).QueryPendingDelegations), limit)
 }
 
-// QueryStakingParams mocks base method.
-func (m *MockClientController) QueryStakingParams() (*types.StakingParams, error) {
+// QueryStakingParamsByVersion mocks base method.
+func (m *MockClientController) QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "QueryStakingParams")
+	ret := m.ctrl.Call(m, "QueryStakingParamsByVersion", version)
 	ret0, _ := ret[0].(*types.StakingParams)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// QueryStakingParams indicates an expected call of QueryStakingParams.
-func (mr *MockClientControllerMockRecorder) QueryStakingParams() *gomock.Call {
+// QueryStakingParamsByVersion indicates an expected call of QueryStakingParamsByVersion.
+func (mr *MockClientControllerMockRecorder) QueryStakingParamsByVersion(version interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryStakingParams", reflect.TypeOf((*MockClientController)(nil).QueryStakingParams))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "QueryStakingParamsByVersion", reflect.TypeOf((*MockClientController)(nil).QueryStakingParamsByVersion), version)
 }
 
 // SubmitCovenantSigs mocks base method.

@@ -40,6 +40,8 @@ type Delegation struct {
 	// if this object is present it means that staker requested undelegation, and whole
 	// delegation is being undelegated directly in delegation object
 	BtcUndelegation *Undelegation
+	// params version used to validate delegation
+	ParamsVersion uint32
 }
 
 // HasCovenantQuorum returns whether a delegation has sufficient sigs

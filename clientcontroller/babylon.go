@@ -9,11 +9,11 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
+	bbnclient "github.com/babylonchain/babylon/client/client"
 	bbntypes "github.com/babylonchain/babylon/types"
 	btcctypes "github.com/babylonchain/babylon/x/btccheckpoint/types"
 	btclctypes "github.com/babylonchain/babylon/x/btclightclient/types"
 	btcstakingtypes "github.com/babylonchain/babylon/x/btcstaking/types"
-	bbnclient "github.com/babylonchain/rpc-client/client"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
@@ -91,7 +91,7 @@ func (bc *BabylonController) GetKeyAddress() sdk.AccAddress {
 	return addr
 }
 
-func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) {
+func (bc *BabylonController) QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error) {
 	// query btc checkpoint params
 	ckptParamRes, err := bc.bbnClient.QueryClient.BTCCheckpointParams()
 	if err != nil {
@@ -99,9 +99,9 @@ func (bc *BabylonController) QueryStakingParams() (*types.StakingParams, error) 
 	}
 
 	// query btc staking params
-	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParams()
+	stakingParamRes, err := bc.bbnClient.QueryClient.BTCStakingParamsByVersion(version)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query staking params: %v", err)
+		return nil, fmt.Errorf("failed to query staking params with version %d: %v", version, err)
 	}
 
 	covenantPks := make([]*btcec.PublicKey, 0, len(stakingParamRes.Params.CovenantPks))
