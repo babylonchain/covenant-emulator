@@ -8,25 +8,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/wire"
-
 	"github.com/avast/retry-go/v4"
-	"github.com/btcsuite/btcd/btcec/v2"
-
-	"go.uber.org/zap"
-
-	covcfg "github.com/babylonchain/covenant-emulator/config"
-	"github.com/babylonchain/covenant-emulator/keyring"
-
 	"github.com/babylonchain/babylon/btcstaking"
 	asig "github.com/babylonchain/babylon/crypto/schnorr-adaptor-signature"
 	bbntypes "github.com/babylonchain/babylon/types"
 	bstypes "github.com/babylonchain/babylon/x/btcstaking/types"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/wire"
+	"go.uber.org/zap"
 
 	"github.com/babylonchain/covenant-emulator/clientcontroller"
+	covcfg "github.com/babylonchain/covenant-emulator/config"
+	"github.com/babylonchain/covenant-emulator/keyring"
 	"github.com/babylonchain/covenant-emulator/types"
 )
 
@@ -51,7 +47,6 @@ type CovenantEmulator struct {
 	kc *keyring.ChainKeyringController
 
 	config *covcfg.Config
-	params *types.StakingParams
 	logger *zap.Logger
 
 	// input is used to pass passphrase to the keyring
@@ -111,16 +106,6 @@ func (ce *CovenantEmulator) PublicKeyStr() string {
 	return hex.EncodeToString(schnorr.SerializePubKey(ce.pk))
 }
 
-func (ce *CovenantEmulator) UpdateParams() error {
-	params, err := ce.getParamsWithRetry()
-	if err != nil {
-		return err
-	}
-	ce.params = params
-
-	return nil
-}
-
 // AddCovenantSignatures adds Covenant signatures on every given Bitcoin delegations and submits them
 // in a batch to Babylon. Invalid delegations will be skipped with error log error will be returned if
 // the batch submission fails
@@ -142,9 +127,15 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 1. the quorum is already achieved, skip sending more sigs
+		// 1. get the params matched to the delegation version
+		params, err := ce.getParamsByVersionWithRetry(btcDel.ParamsVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get staking params with version %d: %w", btcDel.ParamsVersion, err)
+		}
+
+		// 2. the quorum is already achieved, skip sending more sigs
 		stakerPkHex := hex.EncodeToString(schnorr.SerializePubKey(btcDel.BtcPk))
-		if btcDel.HasCovenantQuorum(ce.params.CovenantQuorum) {
+		if btcDel.HasCovenantQuorum(params.CovenantQuorum) {
 			ce.logger.Error("covenant signatures already fulfilled",
 				zap.String("staker_pk", stakerPkHex),
 				zap.String("staking_tx_hex", btcDel.StakingTxHex),
@@ -152,12 +143,12 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 2. check unbonding time (staking time from unbonding tx) is larger than min unbonding time
+		// 3. check unbonding time (staking time from unbonding tx) is larger than min unbonding time
 		// which is larger value from:
 		// - MinUnbondingTime
 		// - CheckpointFinalizationTimeout
 		unbondingTime := btcDel.UnbondingTime
-		minUnbondingTime := ce.params.MinUnbondingTime
+		minUnbondingTime := params.MinUnbondingTime
 		if unbondingTime <= minUnbondingTime {
 			ce.logger.Error("invalid unbonding time",
 				zap.Uint32("min_unbonding_time", minUnbondingTime),
@@ -166,8 +157,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 3. decode staking tx and slashing tx from the delegation
-		stakingTx, slashingTx, err := decodeDelegationTransactions(btcDel, ce.params, &ce.config.BTCNetParams)
+		// 4. decode staking tx and slashing tx from the delegation
+		stakingTx, slashingTx, err := decodeDelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid delegation",
 				zap.String("staker_pk", stakerPkHex),
@@ -178,8 +169,8 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 4. decode unbonding tx and slash unbonding tx from the undelegation
-		unbondingTx, slashUnbondingTx, err := decodeUndelegationTransactions(btcDel, ce.params, &ce.config.BTCNetParams)
+		// 5. decode unbonding tx and slash unbonding tx from the undelegation
+		unbondingTx, slashUnbondingTx, err := decodeUndelegationTransactions(btcDel, params, &ce.config.BTCNetParams)
 		if err != nil {
 			ce.logger.Error("invalid undelegation",
 				zap.String("staker_pk", stakerPkHex),
@@ -190,7 +181,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 5. sign covenant staking sigs
+		// 6. sign covenant staking sigs
 		// record metrics
 		startSignTime := time.Now()
 		metricsTimeKeeper.SetPreviousSignStart(&startSignTime)
@@ -206,7 +197,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			slashingTx,
 			unbondingTx,
 			covenantPrivKey,
-			ce.params,
+			params,
 			&ce.config.BTCNetParams,
 		)
 		if err != nil {
@@ -214,13 +205,13 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			continue
 		}
 
-		// 6. sign covenant slash unbonding signatures
+		// 7. sign covenant slash unbonding signatures
 		slashUnbondingSigs, err := signSlashUnbondingSignatures(
 			btcDel,
 			unbondingTx,
 			slashUnbondingTx,
 			covenantPrivKey,
-			ce.params,
+			params,
 			&ce.config.BTCNetParams,
 		)
 		if err != nil {
@@ -233,7 +224,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		metricsTimeKeeper.SetPreviousSignFinish(&finishSignTime)
 		timedSignDelegationLag.Observe(time.Since(startSignTime).Seconds())
 
-		// 7. collect covenant sigs
+		// 8. collect covenant sigs
 		covenantSigs = append(covenantSigs, &types.CovenantSigs{
 			PublicKey:             ce.pk,
 			StakingTxHash:         stakingTx.TxHash(),
@@ -243,7 +234,7 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		})
 	}
 
-	// 8. submit covenant sigs
+	// 9. submit covenant sigs
 	res, err := ce.cc.SubmitCovenantSigs(covenantSigs)
 	if err != nil {
 		ce.recordMetricsFailedSignDelegations(len(covenantSigs))
@@ -504,12 +495,6 @@ func (ce *CovenantEmulator) covenantSigSubmissionLoop() {
 	for {
 		select {
 		case <-covenantSigTicker.C:
-			// 0. Update slashing address in case it is changed upon governance proposal
-			if err := ce.UpdateParams(); err != nil {
-				ce.logger.Debug("failed to get staking params", zap.Error(err))
-				continue
-			}
-
 			// 1. Get all pending delegations
 			dels, err := ce.cc.QueryPendingDelegations(limit)
 			if err != nil {
@@ -586,14 +571,14 @@ func CreateCovenantKey(keyringDir, chainID, keyName, backend, passphrase, hdPath
 	return krController.CreateChainKey(passphrase, hdPath)
 }
 
-func (ce *CovenantEmulator) getParamsWithRetry() (*types.StakingParams, error) {
+func (ce *CovenantEmulator) getParamsByVersionWithRetry(version uint32) (*types.StakingParams, error) {
 	var (
 		params *types.StakingParams
 		err    error
 	)
 
 	if err := retry.Do(func() error {
-		params, err = ce.cc.QueryStakingParams()
+		params, err = ce.cc.QueryStakingParamsByVersion(version)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,7 @@ package clientcontroller
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"go.uber.org/zap"
 
@@ -22,7 +23,7 @@ type ClientController interface {
 	// QueryPendingDelegations queries BTC delegations that are in status of pending
 	QueryPendingDelegations(limit uint64) ([]*types.Delegation, error)
 
-	QueryStakingParams() (*types.StakingParams, error)
+	QueryStakingParamsByVersion(version uint32) (*types.StakingParams, error)
 
 	Close() error
 }
