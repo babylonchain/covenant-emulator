@@ -174,6 +174,13 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 			uint16(unbondingTime),
 			&ce.config.BTCNetParams,
 		); err != nil {
+			ce.logger.Error("invalid delegation",
+				zap.String("staker_pk", bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.BtcPk).MarshalHex()),
+				zap.String("finality_provider_pk", bbntypes.NewBIP340PubKeyFromBTCPK(btcDel.FpBtcPks[0]).MarshalHex()),
+				zap.String("staking_tx_hex", btcDel.StakingTxHex),
+				zap.String("slashing_tx_hex", btcDel.SlashingTxHex),
+				zap.Error(err),
+			)
 			return nil, fmt.Errorf("invalid txs in the delegation: %w", err)
 		}
 
