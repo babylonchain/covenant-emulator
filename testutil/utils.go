@@ -14,7 +14,7 @@ func PrepareMockedClientController(t *testing.T, params *types.StakingParams) *m
 	mockClientController := mocks.NewMockClientController(ctl)
 
 	mockClientController.EXPECT().Close().Return(nil).AnyTimes()
-	mockClientController.EXPECT().QueryStakingParams().Return(params, nil).AnyTimes()
+	mockClientController.EXPECT().QueryStakingParamsByVersion(gomock.Any()).Return(params, nil).AnyTimes()
 
 	return mockClientController
 }
