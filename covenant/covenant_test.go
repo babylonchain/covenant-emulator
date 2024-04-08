@@ -179,6 +179,12 @@ func FuzzAddCovenantSig(f *testing.F) {
 			})
 		}
 
+		// add one invalid delegation to expect it does not affect others
+		invalidDelegation := &types.Delegation{
+			StakingTxHex: "xxxx",
+		}
+		btcDels = append(btcDels, invalidDelegation)
+
 		// check the sigs are expected
 		expectedTxHash := testutil.GenRandomHexStr(r, 32)
 		mockClientController.EXPECT().SubmitCovenantSigs(covSigsSet).
