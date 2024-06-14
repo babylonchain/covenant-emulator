@@ -317,10 +317,9 @@ func UndelegationRespToUndelegation(undel *btcstakingtypes.BTCUndelegationRespon
 
 // Currently this is only used for e2e tests, probably does not need to add it into the interface
 func (bc *BabylonController) CreateBTCDelegation(
-	delBabylonPk *secp256k1.PubKey,
 	delBtcPk *bbntypes.BIP340PubKey,
 	fpPks []*btcec.PublicKey,
-	pop *btcstakingtypes.ProofOfPossession,
+	pop *btcstakingtypes.ProofOfPossessionBTC,
 	stakingTime uint32,
 	stakingValue int64,
 	stakingTxInfo *btcctypes.TransactionInfo,
@@ -337,8 +336,7 @@ func (bc *BabylonController) CreateBTCDelegation(
 		fpBtcPks = append(fpBtcPks, *bbntypes.NewBIP340PubKeyFromBTCPK(v))
 	}
 	msg := &btcstakingtypes.MsgCreateBTCDelegation{
-		Signer:                        bc.mustGetTxSigner(),
-		BabylonPk:                     delBabylonPk,
+		StakerAddr:                    bc.mustGetTxSigner(),
 		Pop:                           pop,
 		BtcPk:                         delBtcPk,
 		FpBtcPkList:                   fpBtcPks,
