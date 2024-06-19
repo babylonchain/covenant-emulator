@@ -50,15 +50,13 @@ type TestManager struct {
 }
 
 type TestDelegationData struct {
-	DelegatorPrivKey        *btcec.PrivateKey
-	DelegatorKey            *btcec.PublicKey
-	DelegatorBabylonPrivKey *secp256k1.PrivKey
-	DelegatorBabylonKey     *secp256k1.PubKey
-	SlashingTx              *bstypes.BTCSlashingTx
-	StakingTx               *wire.MsgTx
-	StakingTxInfo           *btcctypes.TransactionInfo
-	DelegatorSig            *bbntypes.BIP340Signature
-	FpPks                   []*btcec.PublicKey
+	DelegatorPrivKey *btcec.PrivateKey
+	DelegatorKey     *btcec.PublicKey
+	SlashingTx       *bstypes.BTCSlashingTx
+	StakingTx        *wire.MsgTx
+	StakingTxInfo    *btcctypes.TransactionInfo
+	DelegatorSig     *bbntypes.BIP340Signature
+	FpPks            []*btcec.PublicKey
 
 	SlashingAddr  string
 	StakingTime   uint16
@@ -254,12 +252,8 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 		unbondingTime,
 	)
 
-	// delegator Babylon key pairs
-	delBabylonPrivKey, delBabylonPubKey, err := datagen.GenRandomSecp256k1KeyPair(r)
-	require.NoError(t, err)
-
 	// proof-of-possession
-	pop, err := bstypes.NewPoP(delBabylonPrivKey, delBtcPrivKey)
+	pop, err := bstypes.NewPoPBTC(tm.CovBBNClient.GetKeyAddress(), delBtcPrivKey)
 	require.NoError(t, err)
 
 	// create and insert BTC headers which include the staking tx to get staking tx info
@@ -339,7 +333,6 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 
 	// submit the BTC delegation to Babylon
 	_, err = tm.CovBBNClient.CreateBTCDelegation(
-		delBabylonPubKey.(*secp256k1.PubKey),
 		bbntypes.NewBIP340PubKeyFromBTCPK(delBtcPubKey),
 		fpPks,
 		pop,
@@ -358,18 +351,16 @@ func (tm *TestManager) InsertBTCDelegation(t *testing.T, fpPks []*btcec.PublicKe
 	t.Log("successfully submitted a BTC delegation")
 
 	return &TestDelegationData{
-		DelegatorPrivKey:        delBtcPrivKey,
-		DelegatorKey:            delBtcPubKey,
-		DelegatorBabylonPrivKey: delBabylonPrivKey.(*secp256k1.PrivKey),
-		DelegatorBabylonKey:     delBabylonPubKey.(*secp256k1.PubKey),
-		FpPks:                   fpPks,
-		StakingTx:               testStakingInfo.StakingTx,
-		SlashingTx:              testStakingInfo.SlashingTx,
-		StakingTxInfo:           txInfo,
-		DelegatorSig:            delegatorSig,
-		SlashingAddr:            params.SlashingAddress.String(),
-		StakingTime:             stakingTime,
-		StakingAmount:           stakingAmount,
+		DelegatorPrivKey: delBtcPrivKey,
+		DelegatorKey:     delBtcPubKey,
+		FpPks:            fpPks,
+		StakingTx:        testStakingInfo.StakingTx,
+		SlashingTx:       testStakingInfo.SlashingTx,
+		StakingTxInfo:    txInfo,
+		DelegatorSig:     delegatorSig,
+		SlashingAddr:     params.SlashingAddress.String(),
+		StakingTime:      stakingTime,
+		StakingAmount:    stakingAmount,
 	}
 }
 
