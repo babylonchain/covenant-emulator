@@ -148,10 +148,10 @@ func (ce *CovenantEmulator) AddCovenantSignatures(btcDels []*types.Delegation) (
 		// - MinUnbondingTime
 		// - CheckpointFinalizationTimeout
 		unbondingTime := btcDel.UnbondingTime
-		minUnbondingTime := params.MinUnbondingTime
-		if unbondingTime <= minUnbondingTime {
+		minUnbondingTime := params.MinimumUnbondingTime()
+		if uint64(unbondingTime) <= minUnbondingTime {
 			ce.logger.Error("invalid unbonding time",
-				zap.Uint32("min_unbonding_time", minUnbondingTime),
+				zap.Uint64("min_unbonding_time", minUnbondingTime),
 				zap.Uint32("got_unbonding_time", unbondingTime),
 			)
 			continue
