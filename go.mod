@@ -19,7 +19,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jsternberg/zap-logfmt v1.3.0
-	github.com/lightningnetwork/lnd v0.16.4-beta.rc1
+	github.com/lightningnetwork/lnd v0.17.0-beta
 	github.com/prometheus/client_golang v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.14
@@ -189,7 +189,7 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
